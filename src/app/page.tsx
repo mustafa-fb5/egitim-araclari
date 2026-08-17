@@ -21,7 +21,7 @@ const tools = [
     href: "/ortalama-hesaplama",
     icon: "📊",
     title: "Ortalama Hesaplama",
-    description: "Ders notları girişi yaparak ağırlıklı ortalama ve harf notu hesaplayın.",
+    description: "Ders notları girişi yaparak ağırlıklı ortalama ve başarı durumu hesaplayın.",
     color: "from-blue-500 to-indigo-600",
     span: "",
   },

@@ -26,7 +26,7 @@ function randomBetween(min: number, max: number) {
   return Math.random() * (max - min) + min;
 }
 
-export default function FloatingBubbles({ count = 28 }: { count?: number }) {
+export default function FloatingBubbles({ count = 20 }: { count?: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,12 +37,12 @@ export default function FloatingBubbles({ count = 28 }: { count?: number }) {
 
     for (let i = 0; i < count; i++) {
       const cfg: BubbleConfig = {
-        size: randomBetween(35, 110),
-        left: randomBetween(2, 98),
-        duration: randomBetween(12, 28),
-        delay: randomBetween(0, 25),
-        drift: randomBetween(-90, 90),
-        scaleEnd: randomBetween(0.8, 1.4),
+        size: randomBetween(100, 220),
+        left: randomBetween(0, 100),
+        duration: randomBetween(18, 38),
+        delay: randomBetween(0, 30),
+        drift: randomBetween(-100, 100),
+        scaleEnd: randomBetween(0.85, 1.3),
         colorIndex: Math.floor(Math.random() * BUBBLE_COLORS.length),
       };
 
@@ -57,10 +57,12 @@ export default function FloatingBubbles({ count = 28 }: { count?: number }) {
         animation-delay: -${cfg.delay}s;
         --drift: ${cfg.drift}px;
         --scale-end: ${cfg.scaleEnd};
-        background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.75) 0%, rgba(${c.r}, ${c.g}, ${c.b}, 0.55) 45%, rgba(${c.r}, ${c.g}, ${c.b}, 0.25) 85%);
-        border: 1.5px solid rgba(255, 255, 255, 0.7);
-        box-shadow: 0 0 ${Math.floor(cfg.size * 0.4)}px rgba(${c.r}, ${c.g}, ${c.b}, 0.45), inset -2px -2px 8px rgba(${c.r}, ${c.g}, ${c.b}, 0.35);
-        filter: blur(${randomBetween(0.8, 2.5).toFixed(1)}px);
+        background: radial-gradient(circle at 40% 40%, rgba(${c.r}, ${c.g}, ${c.b}, 0.32) 0%, rgba(${c.r}, ${c.g}, ${c.b}, 0.14) 50%, transparent 80%);
+        border: none;
+        box-shadow: 0 0 ${Math.floor(cfg.size * 0.3)}px rgba(${c.r}, ${c.g}, ${c.b}, 0.18);
+        filter: blur(${randomBetween(35, 52).toFixed(0)}px);
+        opacity: 0.65;
+        will-change: transform, opacity;
       `;
       container.appendChild(el);
       bubbles.push(el);

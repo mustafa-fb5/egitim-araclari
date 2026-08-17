@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { 
@@ -33,9 +33,12 @@ export default function SinavAnalizPage() {
   
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
   const [sinavlar, setSinavlar] = useState<Sinav[]>([]);
-  const [secilenSinavId, setSecilenSinifId] = useState<number | null>(null);
+  const [secilenSinavId, setSecilenSinavId] = useState<number | null>(null);
   const [yeniSinavAdi, setYeniSinavAdi] = useState("");
   const [sinavModalAcik, setSinavModalAcik] = useState(false);
+
+  // Öğrenci Sınav Geçmişi Modalı State'i
+  const [gecmisOgrenci, setGecmisOgrenci] = useState<Ogrenci | null>(null);
 
   // Firestore Realtime Subscription (Öğrenciler & Sınavlar)
   useEffect(() => {
@@ -43,14 +46,14 @@ export default function SinavAnalizPage() {
     const unsubSinavlar = subscribeSinavlar((data) => {
       setSinavlar(data);
       if (data.length > 0 && secilenSinavId === null) {
-        setSecilenSinifId(data[0].id);
+        setSecilenSinavId(data[0].id);
       }
     });
     return () => {
       unsubOgrenciler();
       unsubSinavlar();
     };
-  }, []);
+  }, [secilenSinavId]);
 
   // Sınav Düzenleme State'leri
   const [duzenlenecekSinav, setDuzenlenecekSinav] = useState<Sinav | null>(null);
@@ -61,14 +64,18 @@ export default function SinavAnalizPage() {
   const [geciciNotlar, setGeciciNotlar] = useState<Record<string, SoruSonuc>>({});
 
   // Seçilen Sınıf ve Şubedeki Öğrenciler
-  const sinifOgrencileri = ogrenciler.filter(
-    (o) => o.sinif === secilenSinif && o.sube === secilenSube
-  );
+  const sinifOgrencileri = useMemo(() => {
+    return ogrenciler.filter(
+      (o) => (secilenSinif === "Tümü" || o.sinif === secilenSinif) && (secilenSube === "Tümü" || o.sube === secilenSube)
+    );
+  }, [ogrenciler, secilenSinif, secilenSube]);
 
   // Seçilen Sınıf ve Şubedeki Sınavlar
-  const filtreliSinavlar = sinavlar.filter(
-    (s) => s.sinif === secilenSinif && s.sube === secilenSube
-  );
+  const filtreliSinavlar = useMemo(() => {
+    return sinavlar.filter(
+      (s) => (secilenSinif === "Tümü" || s.sinif === secilenSinif) && (secilenSube === "Tümü" || s.sube === secilenSube)
+    );
+  }, [sinavlar, secilenSinif, secilenSube]);
 
   const aktifSinav = sinavlar.find((s) => s.id === secilenSinavId) || (filtreliSinavlar.length > 0 ? filtreliSinavlar[0] : undefined);
 
@@ -82,14 +89,14 @@ export default function SinavAnalizPage() {
     const yeniSinav: Sinav = {
       id: yeniId,
       ad: yeniSinavAdi,
-      sinif: secilenSinif,
-      sube: secilenSube,
+      sinif: secilenSinif !== "Tümü" ? secilenSinif : "8",
+      sube: secilenSube !== "Tümü" ? secilenSube : "A",
       tarih: new Date().toISOString().split("T")[0],
       ogrenciNotlari: {},
     };
 
     await saveSinav(yeniSinav);
-    setSecilenSinifId(yeniId);
+    setSecilenSinavId(yeniId);
     setYeniSinavAdi("");
     setSinavModalAcik(false);
   };
@@ -117,18 +124,18 @@ export default function SinavAnalizPage() {
       await deleteSinavFromDb(sinavId);
       const kalanlar = sinavlar.filter((s) => s.id !== sinavId);
       if (secilenSinavId === sinavId) {
-        setSecilenSinifId(kalanlar.length > 0 ? kalanlar[0].id : null);
+        setSecilenSinavId(kalanlar.length > 0 ? kalanlar[0].id : null);
       }
     }
   };
 
   // Öğrenci Notu Düzenleme Penceresini Açma
-  const ogrenciNotuAc = (ogrenci: Ogrenci) => {
+  const ogrenciNotuAc = (ogrenci: Ogrenci, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setAktifOgrenci(ogrenci);
     if (aktifSinav && aktifSinav.ogrenciNotlari[ogrenci.id]) {
       setGeciciNotlar(JSON.parse(JSON.stringify(aktifSinav.ogrenciNotlari[ogrenci.id])));
     } else {
-      // Varsayılan boş notlar (Kutucuklar boş gelsin)
       const bos: Record<string, SoruSonuc> = {};
       dersListesi.forEach((d) => {
         bos[d.id] = { dogru: "", yanlis: "", bos: d.soruSayisi };
@@ -147,8 +154,8 @@ export default function SinavAnalizPage() {
     let yeniDeger: number | "" = degerStr === "" ? "" : parseInt(degerStr);
     if (typeof yeniDeger === "number" && isNaN(yeniDeger)) yeniDeger = "";
 
-    let yeniDogru = alan === "dogru" ? yeniDeger : mevcut.dogru;
-    let yeniYanlis = alan === "yanlis" ? yeniDeger : mevcut.yanlis;
+    const yeniDogru = alan === "dogru" ? yeniDeger : mevcut.dogru;
+    const yeniYanlis = alan === "yanlis" ? yeniDeger : mevcut.yanlis;
 
     const dSayisi = typeof yeniDogru === "number" ? yeniDogru : 0;
     const ySayisi = typeof yeniYanlis === "number" ? yeniYanlis : 0;
@@ -187,7 +194,7 @@ export default function SinavAnalizPage() {
   };
 
   // LGS Puan Hesaplama Modülü
-  const lgsPuanHesapla = (notlar: Record<string, SoruSonuc> | undefined) => {
+  const lgsPuanHesapla = (notlar: Record<string, SoruSonuc> | undefined, sinifSeviyesi = secilenSinif) => {
     if (!notlar) return 0;
 
     const turkceNet = netHesapla(notlar["turkce"]);
@@ -200,14 +207,12 @@ export default function SinavAnalizPage() {
     const toplamNet = turkceNet + matNet + fenNet + sosNet + dinNet + ingNet;
     if (toplamNet === 0) return 0;
 
-    // 8. Sınıf ise LGS 500'lük Puan Formülü
-    if (secilenSinif === "8") {
+    if (sinifSeviyesi === "8") {
       const puan = 194.76 + (turkceNet * 4.32) + (matNet * 4.28) + (fenNet * 4.07) + (sosNet * 1.68) + (dinNet * 1.84) + (ingNet * 1.58);
       return Math.min(500, parseFloat(puan.toFixed(3)));
     }
 
-    // Diğer Sınıflar İçin 100 Üzerinden Ağırlıklı Puan
-    const maxAglNet = (20 * 4) + (20 * 4) + (20 * 4) + (10 * 1) + (10 * 1) + (10 * 1); // 270
+    const maxAglNet = (20 * 4) + (20 * 4) + (20 * 4) + (10 * 1) + (10 * 1) + (10 * 1);
     const ogrenciAglNet = (turkceNet * 4) + (matNet * 4) + (fenNet * 4) + (sosNet * 1) + (dinNet * 1) + (ingNet * 1);
     const yuzlukPuan = (ogrenciAglNet / maxAglNet) * 100;
     return parseFloat(yuzlukPuan.toFixed(2));
@@ -220,6 +225,177 @@ export default function SinavAnalizPage() {
       t += netHesapla(notlar[d.id]);
     });
     return parseFloat(t.toFixed(2));
+  };
+
+  // Bir öğrencinin geçmişteki tüm sınavlarını ve puanlarını toparlama
+  const ogrenciGecmisSinavlari = useMemo(() => {
+    if (!gecmisOgrenci) return [];
+
+    const sonuclar: {
+      sinavId: number;
+      sinavAdi: string;
+      tarih: string;
+      sinif: string;
+      sube: string;
+      notlar: Record<string, SoruSonuc>;
+      toplamNet: number;
+      puan: number;
+      turkceNet: number;
+      matNet: number;
+      fenNet: number;
+    }[] = [];
+
+    sinavlar.forEach((s) => {
+      const ogrNot = s.ogrenciNotlari?.[gecmisOgrenci.id];
+      if (ogrNot) {
+        const topNet = toplamNetBul(ogrNot);
+        const puan = lgsPuanHesapla(ogrNot, s.sinif);
+
+        sonuclar.push({
+          sinavId: s.id,
+          sinavAdi: s.ad,
+          tarih: s.tarih,
+          sinif: s.sinif,
+          sube: s.sube,
+          notlar: ogrNot,
+          toplamNet: topNet,
+          puan,
+          turkceNet: netHesapla(ogrNot["turkce"]),
+          matNet: netHesapla(ogrNot["matematik"]),
+          fenNet: netHesapla(ogrNot["fen"]),
+        });
+      }
+    });
+
+    // Tarihe göre sırala
+    return sonuclar.sort((a, b) => new Date(a.tarih).getTime() - new Date(b.tarih).getTime());
+  }, [gecmisOgrenci, sinavlar]);
+
+  // Geçmiş sınav istatistikleri (Ortalama, En Yüksek, vb.)
+  const gecmisIstatistik = useMemo(() => {
+    if (ogrenciGecmisSinavlari.length === 0) {
+      return { ortalamaPuan: 0, enYuksekPuan: 0, enDusukPuan: 0, ortalamaNet: 0 };
+    }
+
+    const puanlar = ogrenciGecmisSinavlari.map((s) => s.puan).filter((p) => p > 0);
+    const netler = ogrenciGecmisSinavlari.map((s) => s.toplamNet);
+
+    const ortalamaPuan = puanlar.length > 0 ? puanlar.reduce((a, b) => a + b, 0) / puanlar.length : 0;
+    const enYuksekPuan = puanlar.length > 0 ? Math.max(...puanlar) : 0;
+    return {
+      ortalamaPuan: parseFloat(ortalamaPuan.toFixed(2)),
+      enYuksekPuan: parseFloat(enYuksekPuan.toFixed(2)),
+      enDusukPuan: parseFloat(enDusukPuan.toFixed(2)),
+      ortalamaNet: parseFloat(ortalamaNet.toFixed(2)),
+    };
+  }, [ogrenciGecmisSinavlari]);
+
+  // Türkçe karakterleri PDF güvenli karakterlere çevirme
+  const trToEn = (str: string): string => {
+    if (!str) return "";
+    return str
+      .replace(/Ğ/g, "G")
+      .replace(/ğ/g, "g")
+      .replace(/Ü/g, "U")
+      .replace(/ü/g, "u")
+      .replace(/Ş/g, "S")
+      .replace(/ş/g, "s")
+      .replace(/İ/g, "I")
+      .replace(/ı/g, "i")
+      .replace(/Ö/g, "O")
+      .replace(/ö/g, "o")
+      .replace(/Ç/g, "C")
+      .replace(/ç/g, "c");
+  };
+
+  // Öğrenci Sınav Geçmişi PDF Raporu Oluşturma
+  const pdfGecmisIndir = async (ogr: Ogrenci) => {
+    const { jsPDF } = await import("jspdf");
+    const { default: autoTable } = await import("jspdf-autotable");
+
+    const doc = new jsPDF({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
+
+    doc.setFillColor(99, 102, 241);
+    doc.rect(14, 10, 269, 7, "F");
+
+    doc.setFontSize(16);
+    doc.setTextColor(30, 27, 75);
+    doc.text("OGRENCI TUM SINAVLAR BASARI VE GELISIM KARNESI", 148, 24, { align: "center" });
+
+    doc.setDrawColor(220, 220, 240);
+    doc.setFillColor(248, 250, 255);
+    doc.roundedRect(14, 32, 269, 18, 3, 3, "FD");
+
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Ogrenci: ${trToEn(ogr.ad)} ${trToEn(ogr.soyad)}`, 20, 39);
+    doc.text(`Okul No: ${ogr.numara}  •  Sinif: ${ogr.sinif}-${ogr.sube}`, 20, 46);
+
+    doc.text(`Girdigi Sinav: ${ogrenciGecmisSinavlari.length}`, 115, 39);
+    doc.text(`Ortalama Puan: ${gecmisIstatistik.ortalamaPuan}`, 115, 46);
+
+    doc.text(`En Yuksek Puan: ${gecmisIstatistik.enYuksekPuan}`, 200, 39);
+    doc.text(`Rapor Tarihi: ${new Date().toLocaleDateString("tr-TR")}`, 200, 46);
+
+    const tableData = ogrenciGecmisSinavlari.map((s, idx) => {
+      const oncekiPuan = idx > 0 ? ogrenciGecmisSinavlari[idx - 1].puan : s.puan;
+      const fark = idx > 0 ? parseFloat((s.puan - oncekiPuan).toFixed(2)) : 0;
+      const degisim = idx === 0 ? "Ilk Sinav" : fark > 0 ? `+${fark}` : fark < 0 ? `${fark}` : "Ayni";
+
+      return [
+        trToEn(s.sinavAdi),
+        s.tarih,
+        String(s.turkceNet),
+        String(s.matNet),
+        String(s.fenNet),
+        String(s.toplamNet),
+        String(s.puan),
+        degisim,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 54,
+      head: [["Sinav Adi", "Tarih", "Turkce Net", "Matematik Net", "Fen Net", "Toplam Net", "Alinan Puan", "Degisim"]],
+      body: tableData.length > 0 ? tableData : [["Kayitli sinav bulunamadi", "-", "-", "-", "-", "-", "-", "-"]],
+      theme: "grid",
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: 255,
+        fontSize: 9,
+        halign: "center",
+      },
+      styles: {
+        fontSize: 9,
+        halign: "center",
+        cellPadding: 3,
+      },
+      columnStyles: {
+        0: { halign: "left", fontStyle: "bold", cellWidth: 70 },
+        5: { fontStyle: "bold", fillColor: [240, 245, 255] },
+        6: { fontStyle: "bold", fillColor: [245, 240, 255] },
+      },
+      alternateRowStyles: {
+        fillColor: [250, 252, 255],
+      },
+    });
+
+    const docWithAutoTable = doc as unknown as { lastAutoTable?: { finalY?: number } };
+    const finalY = docWithAutoTable.lastAutoTable?.finalY || 150;
+
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text("Sinif Rehber Ogretmeni", 50, finalY + 25, { align: "center" });
+    doc.line(25, finalY + 20, 75, finalY + 20);
+
+    doc.text("Okul Muduru", 240, finalY + 25, { align: "center" });
+    doc.line(215, finalY + 20, 265, finalY + 20);
+
+    doc.save(`sinav_gecmisi_${ogr.ad}_${ogr.soyad}.pdf`);
   };
 
   return (
@@ -238,6 +414,7 @@ export default function SinavAnalizPage() {
                 }}
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] font-medium focus:ring-2 focus:ring-[var(--ring)]"
               >
+                <option value="Tümü">Tüm Sınıflar (1-12)</option>
                 {sinifNumaralari.map((s) => (
                   <option key={s} value={s}>{s}. Sınıf</option>
                 ))}
@@ -254,6 +431,7 @@ export default function SinavAnalizPage() {
                 }}
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] font-medium focus:ring-2 focus:ring-[var(--ring)]"
               >
+                <option value="Tümü">Tüm Şubeler (A-S)</option>
                 {subeler.map((sube) => (
                   <option key={sube} value={sube}>{sube} Şubesi</option>
                 ))}
@@ -303,11 +481,11 @@ export default function SinavAnalizPage() {
                   <span>🎓 {aktifSinav.ad}</span>
                 </h3>
                 <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
-                  Not girmek veya düzenlemek için listedeki öğrencinin üzerine tıklayın.
+                  💡 <strong>Öğrenci ismine tıklayarak</strong> tüm sınav geçmişini görebilir, sağdaki ✏️ butonundan not girebilirsiniz.
                 </p>
               </div>
 
-              {/* Sınav Adını Değiştir ve Sil Butonları Başlığın Yanında */}
+              {/* Sınav Adını Değiştir ve Sil Butonları */}
               <div className="flex items-center gap-2 ml-2">
                 <button
                   onClick={(e) => sinavDuzenleAc(e, aktifSinav)}
@@ -337,7 +515,7 @@ export default function SinavAnalizPage() {
             <thead>
               <tr>
                 <th className="text-left p-3 rounded-tl-xl">No</th>
-                <th className="text-left p-3">Öğrenci Ad Soyad</th>
+                <th className="text-left p-3">Öğrenci Adı Soyadı (Tüm Geçmiş)</th>
                 <th className="text-center p-3">Türkçe (20)</th>
                 <th className="text-center p-3">Matematik (20)</th>
                 <th className="text-center p-3">Fen Bilgisi (20)</th>
@@ -345,15 +523,16 @@ export default function SinavAnalizPage() {
                 <th className="text-center p-3">Din K. (10)</th>
                 <th className="text-center p-3">İngilizce (10)</th>
                 <th className="text-center p-3 bg-blue-500/10 text-blue-600">Toplam Net</th>
-                <th className="text-center p-3 bg-purple-500/10 text-purple-600 rounded-tr-xl">
+                <th className="text-center p-3 bg-purple-500/10 text-purple-600">
                   {secilenSinif === "8" ? "LGS Puanı" : "Puan (100)"}
                 </th>
+                <th className="text-center p-3 rounded-tr-xl">Not Girişi</th>
               </tr>
             </thead>
             <tbody>
               {sinifOgrencileri.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="p-8 text-center text-[var(--muted-foreground)]">
+                  <td colSpan={11} className="p-8 text-center text-[var(--muted-foreground)]">
                     Bu sınıf ve şubede henüz kayıtlı öğrenci yok. Sınıf Listesi modülünden öğrenci ekleyebilirsiniz.
                   </td>
                 </tr>
@@ -366,15 +545,29 @@ export default function SinavAnalizPage() {
                   return (
                     <tr
                       key={ogr.id}
-                      onClick={() => ogrenciNotuAc(ogr)}
-                      className="border-b border-[var(--border)] cursor-pointer hover:bg-[var(--primary)]/10 transition-colors group"
+                      className="border-b border-[var(--border)] hover:bg-[var(--secondary)]/40 transition-colors"
                     >
                       <td className="p-3 font-semibold text-sm">{ogr.numara}</td>
-                      <td className="p-3 font-bold text-sm text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
-                        <div className="flex items-center gap-2">
-                          <span>{ogr.ad} {ogr.soyad}</span>
-                          <span className="text-xs opacity-0 group-hover:opacity-100 text-[var(--primary)]">✏️ Not Gir</span>
-                        </div>
+                      
+                      {/* ÖĞRENCİ İSMİNE TIKLAYINCA GEÇMİŞ SINAV ANALİZ MODALI AÇILIR */}
+                      <td className="p-3">
+                        <button
+                          onClick={() => setGecmisOgrenci(ogr)}
+                          className="flex items-center gap-2.5 text-left group"
+                          title="Tüm sınav geçmişini ve başarı grafiğini gör"
+                        >
+                          <div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center text-white text-xs font-bold shadow-sm group-hover:scale-110 transition-transform">
+                            {ogr.ad[0]}{ogr.soyad[0]}
+                          </div>
+                          <div>
+                            <span className="font-bold text-sm text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors underline decoration-dotted decoration-indigo-400">
+                              {ogr.ad} {ogr.soyad}
+                            </span>
+                            <span className="block text-[10px] text-indigo-500 font-semibold">
+                              📊 Sınav Geçmişi
+                            </span>
+                          </div>
+                        </button>
                       </td>
 
                       {dersListesi.map((d) => {
@@ -406,6 +599,16 @@ export default function SinavAnalizPage() {
                       <td className="p-3 text-center bg-purple-500/5 font-extrabold text-purple-600 text-sm">
                         {puan > 0 ? puan : "-"}
                       </td>
+
+                      <td className="p-3 text-center">
+                        <button
+                          onClick={(e) => ogrenciNotuAc(ogr, e)}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 transition-all shadow-sm flex items-center gap-1 mx-auto"
+                        >
+                          <span>✏️</span>
+                          <span>Not Gir</span>
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -418,8 +621,150 @@ export default function SinavAnalizPage() {
           <span className="text-4xl block">📝</span>
           <p className="text-base font-bold text-[var(--foreground)]">Henüz Bir Sınav Seçilmedi</p>
           <p className="text-sm max-w-md mx-auto">
-            Yukarıdaki <strong>"Sınav Seçimi"</strong> açılır menüsünden (ok) mevcut bir sınavı seçebilir veya <strong>"➕ Yeni Sınav"</strong> butonuyla yenisini ekleyebilirsiniz.
+            Yukarıdaki <strong>"Sınav Seçimi"</strong> açılır menüsünden mevcut bir sınavı seçebilir veya <strong>"➕ Yeni Sınav"</strong> butonuyla yenisini ekleyebilirsiniz.
           </p>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ÖĞRENCİ TÜM SINAV GEÇMİŞİ VE PUANLARI (YENİ ÖZELLİK) */}
+      {/* ========================================================================= */}
+      {gecmisOgrenci && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+          <div className="glass-card bg-[var(--card)] rounded-3xl p-6 max-w-4xl w-full space-y-5 shadow-2xl border border-[var(--border)] max-h-[90vh] overflow-y-auto">
+            
+            {/* Modal Üst Başlık */}
+            <div className="flex justify-between items-center border-b border-[var(--border)] pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl gradient-bg flex items-center justify-center text-white text-lg font-black shadow-md">
+                  {gecmisOgrenci.ad[0]}{gecmisOgrenci.soyad[0]}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[var(--foreground)]">
+                    📊 {gecmisOgrenci.ad} {gecmisOgrenci.soyad} — Tüm Sınav Geçmişi
+                  </h3>
+                  <p className="text-xs text-[var(--muted-foreground)]">
+                    Okul No: <strong>{gecmisOgrenci.numara}</strong> • Sınıf: <strong>{gecmisOgrenci.sinif}-{gecmisOgrenci.sube}</strong> • Toplam {ogrenciGecmisSinavlari.length} Sınav Kaydı
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setGecmisOgrenci(null)} 
+                className="w-9 h-9 rounded-full bg-[var(--secondary)] text-[var(--foreground)] hover:bg-red-500 hover:text-white transition-all flex items-center justify-center font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* İstatistik Kartları */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="glass-card rounded-2xl p-4 text-center">
+                <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Ortalama Puan</p>
+                <p className="text-2xl font-black gradient-text mt-1">{gecmisIstatistik.ortalamaPuan}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">Tüm Sınavlar</p>
+              </div>
+
+              <div className="glass-card rounded-2xl p-4 text-center">
+                <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">En Yüksek Puan</p>
+                <p className="text-2xl font-black text-emerald-500 mt-1">{gecmisIstatistik.enYuksekPuan}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">Zirve Başarı</p>
+              </div>
+
+              <div className="glass-card rounded-2xl p-4 text-center">
+                <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">En Düşük Puan</p>
+                <p className="text-2xl font-black text-amber-500 mt-1">{gecmisIstatistik.enDusukPuan}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">Taban Sonuç</p>
+              </div>
+
+              <div className="glass-card rounded-2xl p-4 text-center">
+                <p className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Ortalama Net</p>
+                <p className="text-2xl font-black text-sky-600 mt-1">{gecmisIstatistik.ortalamaNet}</p>
+                <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">Dersler Toplamı</p>
+              </div>
+            </div>
+
+            {/* Sınav Geçmişi Tablosu */}
+            <div className="overflow-x-auto rounded-2xl border border-[var(--border)]">
+              <table className="w-full table-modern">
+                <thead>
+                  <tr>
+                    <th className="text-left p-3">Sınav Adı</th>
+                    <th className="text-center p-3">Tarih</th>
+                    <th className="text-center p-3">Türkçe Net</th>
+                    <th className="text-center p-3">Matematik Net</th>
+                    <th className="text-center p-3">Fen Net</th>
+                    <th className="text-center p-3 bg-blue-500/10 text-blue-600">Toplam Net</th>
+                    <th className="text-center p-3 bg-purple-500/10 text-purple-600">Alınan Puan</th>
+                    <th className="text-center p-3">İlerleme</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ogrenciGecmisSinavlari.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-[var(--muted-foreground)] font-medium">
+                        Bu öğrenci için henüz kaydedilmiş bir sınav sonucu bulunmuyor.
+                      </td>
+                    </tr>
+                  ) : (
+                    ogrenciGecmisSinavlari.map((s, idx) => {
+                      const oncekiPuan = idx > 0 ? ogrenciGecmisSinavlari[idx - 1].puan : s.puan;
+                      const fark = idx > 0 ? parseFloat((s.puan - oncekiPuan).toFixed(2)) : 0;
+
+                      return (
+                        <tr key={s.sinavId} className="border-b border-[var(--border)]">
+                          <td className="p-3 font-bold text-sm text-[var(--foreground)]">
+                            🎯 {s.sinavAdi}
+                          </td>
+                          <td className="p-3 text-center text-xs text-[var(--muted-foreground)]">
+                            {new Date(s.tarih).toLocaleDateString("tr-TR")}
+                          </td>
+                          <td className="p-3 text-center text-xs font-semibold">{s.turkceNet}</td>
+                          <td className="p-3 text-center text-xs font-semibold">{s.matNet}</td>
+                          <td className="p-3 text-center text-xs font-semibold">{s.fenNet}</td>
+                          <td className="p-3 text-center font-extrabold text-blue-600 text-sm bg-blue-500/5">
+                            {s.toplamNet}
+                          </td>
+                          <td className="p-3 text-center font-black text-purple-600 text-sm bg-purple-500/5">
+                            {s.puan > 0 ? s.puan : "-"}
+                          </td>
+                          <td className="p-3 text-center text-xs font-bold">
+                            {idx === 0 ? (
+                              <span className="text-gray-400">İlk Sınav</span>
+                            ) : fark > 0 ? (
+                              <span className="text-emerald-500">▲ +{fark}</span>
+                            ) : fark < 0 ? (
+                              <span className="text-red-500">▼ {fark}</span>
+                            ) : (
+                              <span className="text-gray-400">— Aynı</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Alt İşlem Butonları */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => pdfGecmisIndir(gecmisOgrenci)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md flex items-center gap-2"
+              >
+                <span>📄</span>
+                <span>Tüm Sınavlar Karnesini İndir (PDF)</span>
+              </button>
+
+              <button
+                onClick={() => setGecmisOgrenci(null)}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--primary)] hover:text-white transition-all"
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -446,7 +791,7 @@ export default function SinavAnalizPage() {
                 value={yeniSinavAdi}
                 onChange={(e) => setYeniSinavAdi(e.target.value)}
                 placeholder="Örn: 2. LGS Deneme Sınavı"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)] font-semibold"
               />
             </div>
 

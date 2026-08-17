@@ -163,3 +163,61 @@ export async function fetchDersProgrami(sinif: string, sube: string): Promise<Re
 export async function saveDersProgrami(sinif: string, sube: string, program: Record<string, Record<string, string>>): Promise<void> {
   await setDoc(doc(db, PROGRAM_COL, `${sinif}-${sube}`), { program });
 }
+
+// ==============================
+// 5. ÖĞRENCİ NOTLARI & ORTALAMA (Firestore)
+// ==============================
+
+const NOTLAR_COL = "ogrenci_notlari";
+
+export interface KayitliDersNotu {
+  id: number;
+  ders: string;
+  sinav1: string;
+  sinav2: string;
+  sinav3: string;
+  odev: string;
+  performans: string;
+}
+
+export interface OgrenciNotKaydi {
+  ogrenciId: string;
+  dersler: KayitliDersNotu[];
+  guncellenmeTarihi: string;
+}
+
+export async function fetchTumOgrenciNotlari(): Promise<Record<string, KayitliDersNotu[]>> {
+  try {
+    const snap = await getDocs(collection(db, NOTLAR_COL));
+    const result: Record<string, KayitliDersNotu[]> = {};
+    snap.forEach((d) => {
+      const data = d.data() as OgrenciNotKaydi;
+      result[d.id] = data.dersler || [];
+    });
+    return result;
+  } catch (error) {
+    console.error("Firestore fetchTumOgrenciNotlari error:", error);
+    return {};
+  }
+}
+
+export function subscribeTumOgrenciNotlari(callback: (notlar: Record<string, KayitliDersNotu[]>) => void) {
+  return onSnapshot(collection(db, NOTLAR_COL), (snap) => {
+    const result: Record<string, KayitliDersNotu[]> = {};
+    snap.forEach((d) => {
+      const data = d.data() as OgrenciNotKaydi;
+      result[d.id] = data.dersler || [];
+    });
+    callback(result);
+  }, (err) => {
+    console.warn("Firestore notlar subscription error:", err);
+  });
+}
+
+export async function saveOgrenciNotlari(ogrenciId: string, dersler: KayitliDersNotu[]): Promise<void> {
+  await setDoc(doc(db, NOTLAR_COL, ogrenciId), {
+    ogrenciId,
+    dersler,
+    guncellenmeTarihi: new Date().toISOString(),
+  });
+}

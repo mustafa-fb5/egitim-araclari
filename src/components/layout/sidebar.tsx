@@ -15,6 +15,7 @@ export const defaultMenuItems = [
   { href: "/ders-programi", label: "Ders Programı", icon: "📅" },
   { href: "/nobet-cizelgesi", label: "Nöbet Çizelgesi", icon: "🔄" },
   { href: "/ogrenci-basari-grafikleri", label: "Başarı Grafikleri", icon: "📉" },
+  { href: "/aidat-takip", label: "Aidat Takip", icon: "💰" },
 ];
 
 export default function Sidebar() {
@@ -81,18 +82,18 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group border ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"
-                    : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 text-indigo-950 dark:text-indigo-200 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 hover:text-indigo-600 dark:hover:text-white backdrop-blur-sm"
+                    : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 text-slate-950 dark:text-slate-950 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 hover:text-indigo-900 dark:hover:text-indigo-900 backdrop-blur-sm"
                 }`}
               >
                 <span className={`text-lg transition-transform duration-200 ${!isActive ? "group-hover:scale-110" : ""}`}>
                   {item.icon}
                 </span>
-                <span className="truncate">{item.label}</span>
+                <span className="truncate text-slate-950 dark:text-slate-950">{item.label}</span>
                 {isActive && (
-                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-sm" />
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-sm" />
                 )}
               </Link>
             );
