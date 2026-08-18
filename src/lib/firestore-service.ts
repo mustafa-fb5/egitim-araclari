@@ -4,8 +4,6 @@ import {
   getDocs, 
   getDoc, 
   setDoc, 
-  addDoc, 
-  updateDoc, 
   deleteDoc, 
   onSnapshot 
 } from "firebase/firestore";
@@ -15,8 +13,43 @@ import {
   type Ogrenci 
 } from "./data";
 
+// ==========================================
+// KULLANICIYA ÖZEL BULUT VE ÖNBELLEK YARDIMCILARI
+// ==========================================
+export function getActiveUserUid(): string {
+  if (typeof window === "undefined") return "guest";
+  try {
+    const raw = localStorage.getItem("egitim_araclari_user_session");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.uid) return String(parsed.uid);
+      if (parsed?.email) return String(parsed.email).replace(/[^a-zA-Z0-9]/g, "_");
+    }
+  } catch {
+    // ignore
+  }
+  return "guest";
+}
+
+// Kullanıcıya özel koleksiyon yolu: users/{uid}/{collectionName}
+function userCol(colName: string) {
+  const uid = getActiveUserUid();
+  return collection(db, "users", uid, colName);
+}
+
+// Kullanıcıya özel doküman yolu: users/{uid}/{collectionName}/{docId}
+function userDoc(colName: string, docId: string) {
+  const uid = getActiveUserUid();
+  return doc(db, "users", uid, colName, docId);
+}
+
+// Kullanıcıya özel yerel önbellek anahtarı
+function userCacheKey(key: string) {
+  return `${getActiveUserUid()}__${key}`;
+}
+
 // ==============================
-// 1. ÖĞRENCİ YÖNETİMİ (Firestore)
+// 1. ÖĞRENCİ YÖNETİMİ (Kullanıcıya Özel)
 // ==============================
 
 const OGRENCILER_COL = "ogrenciler";
@@ -24,7 +57,7 @@ const OGRENCILER_COL = "ogrenciler";
 export function getInitialOgrenciler(): Ogrenci[] {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -39,7 +72,7 @@ export function getInitialOgrenciler(): Ogrenci[] {
 export function getInitialPersoneller(): PersonelData[] {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_personeller_cache");
+      const cached = localStorage.getItem(userCacheKey("egitim_personeller_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -53,7 +86,7 @@ export function getInitialPersoneller(): PersonelData[] {
 
 export async function fetchOgrenciler(): Promise<Ogrenci[]> {
   try {
-    const snap = await getDocs(collection(db, OGRENCILER_COL));
+    const snap = await getDocs(userCol(OGRENCILER_COL));
     if (snap.empty) {
       return [];
     }
@@ -69,13 +102,12 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
 }
 
 export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
-  // İlk önce tarayıcı önbelleğindeki en son veriyi derhal yükle
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           callback(parsed);
         }
       }
@@ -84,18 +116,14 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     }
   }
 
-  return onSnapshot(collection(db, OGRENCILER_COL), (snap) => {
-    if (snap.empty) {
-      callback([]);
-      return;
-    }
+  return onSnapshot(userCol(OGRENCILER_COL), (snap) => {
     const list: Ogrenci[] = [];
     snap.forEach((d) => list.push(d.data() as Ogrenci));
     list.sort((a, b) => Number(a.numara) - Number(b.numara));
     
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), JSON.stringify(list));
       } catch {
         // ignore
       }
@@ -106,7 +134,7 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     console.warn("Firestore subscription error:", err);
     if (typeof window !== "undefined") {
       try {
-        const cached = localStorage.getItem("egitim_ogrenciler_cache");
+        const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
         if (cached) {
           callback(JSON.parse(cached));
           return;
@@ -121,7 +149,8 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
 export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      const cacheKey = userCacheKey("egitim_ogrenciler_cache");
+      const cached = localStorage.getItem(cacheKey);
       let list: Ogrenci[] = cached ? JSON.parse(cached) : [];
       const idx = list.findIndex((o) => o.id === ogrenci.id);
       if (idx >= 0) {
@@ -129,32 +158,33 @@ export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
       } else {
         list.push(ogrenci);
       }
-      localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+      localStorage.setItem(cacheKey, JSON.stringify(list));
     } catch {
       // ignore
     }
   }
-  await setDoc(doc(db, OGRENCILER_COL, String(ogrenci.id)), ogrenci);
+  await setDoc(userDoc(OGRENCILER_COL, String(ogrenci.id)), ogrenci);
 }
 
 export async function deleteOgrenci(ogrenciId: number): Promise<void> {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      const cacheKey = userCacheKey("egitim_ogrenciler_cache");
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         let list: Ogrenci[] = JSON.parse(cached);
         list = list.filter((o) => o.id !== ogrenciId);
-        localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+        localStorage.setItem(cacheKey, JSON.stringify(list));
       }
     } catch {
       // ignore
     }
   }
-  await deleteDoc(doc(db, OGRENCILER_COL, String(ogrenciId)));
+  await deleteDoc(userDoc(OGRENCILER_COL, String(ogrenciId)));
 }
 
 // ==============================
-// 2. SINAV ANALİZİ (Firestore)
+// 2. SINAV ANALİZİ (Kullanıcıya Özel)
 // ==============================
 
 const SINAVLAR_COL = "sinavlar";
@@ -176,7 +206,7 @@ export interface SinavData {
 
 export async function fetchSinavlar(): Promise<SinavData[]> {
   try {
-    const snap = await getDocs(collection(db, SINAVLAR_COL));
+    const snap = await getDocs(userCol(SINAVLAR_COL));
     const list: SinavData[] = [];
     snap.forEach((d) => list.push(d.data() as SinavData));
     return list;
@@ -189,7 +219,7 @@ export async function fetchSinavlar(): Promise<SinavData[]> {
 export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      const cached = localStorage.getItem(userCacheKey("egitim_sinavlar_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
@@ -201,13 +231,13 @@ export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
     }
   }
 
-  return onSnapshot(collection(db, SINAVLAR_COL), (snap) => {
+  return onSnapshot(userCol(SINAVLAR_COL), (snap) => {
     const list: SinavData[] = [];
     snap.forEach((d) => list.push(d.data() as SinavData));
     
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+        localStorage.setItem(userCacheKey("egitim_sinavlar_cache"), JSON.stringify(list));
       } catch {
         // ignore
       }
@@ -222,7 +252,8 @@ export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
 export async function saveSinav(sinav: SinavData): Promise<void> {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      const cacheKey = userCacheKey("egitim_sinavlar_cache");
+      const cached = localStorage.getItem(cacheKey);
       let list: SinavData[] = cached ? JSON.parse(cached) : [];
       const idx = list.findIndex((s) => s.id === sinav.id);
       if (idx >= 0) {
@@ -230,41 +261,41 @@ export async function saveSinav(sinav: SinavData): Promise<void> {
       } else {
         list.push(sinav);
       }
-      localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+      localStorage.setItem(cacheKey, JSON.stringify(list));
     } catch {
       // ignore
     }
   }
-  await setDoc(doc(db, SINAVLAR_COL, String(sinav.id)), sinav);
+  await setDoc(userDoc(SINAVLAR_COL, String(sinav.id)), sinav);
 }
 
 export async function deleteSinav(sinavId: number): Promise<void> {
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      const cacheKey = userCacheKey("egitim_sinavlar_cache");
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         let list: SinavData[] = JSON.parse(cached);
         list = list.filter((s) => s.id !== sinavId);
-        localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+        localStorage.setItem(cacheKey, JSON.stringify(list));
       }
     } catch {
       // ignore
     }
   }
-  await deleteDoc(doc(db, SINAVLAR_COL, String(sinavId)));
+  await deleteDoc(userDoc(SINAVLAR_COL, String(sinavId)));
 }
 
 // ==============================
-// 3. YOKLAMA (Firestore)
+// 3. YOKLAMA (Kullanıcıya Özel)
 // ==============================
 
 const YOKLAMA_COL = "yoklamalar";
 
 export function subscribeYoklamalar(callback: (data: Record<string, Record<number, string>>) => void) {
-  // İlk önce localStorage'daki önbelleği yükle
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_yoklama_cache");
+      const cached = localStorage.getItem(userCacheKey("egitim_yoklama_cache"));
       if (cached) {
         callback(JSON.parse(cached));
       }
@@ -273,7 +304,7 @@ export function subscribeYoklamalar(callback: (data: Record<string, Record<numbe
     }
   }
 
-  return onSnapshot(collection(db, YOKLAMA_COL), (snap) => {
+  return onSnapshot(userCol(YOKLAMA_COL), (snap) => {
     const data: Record<string, Record<number, string>> = {};
     snap.forEach((d) => {
       const raw = d.data().kayitlar || {};
@@ -286,7 +317,7 @@ export function subscribeYoklamalar(callback: (data: Record<string, Record<numbe
     
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("egitim_yoklama_cache", JSON.stringify(data));
+        localStorage.setItem(userCacheKey("egitim_yoklama_cache"), JSON.stringify(data));
       } catch {
         // ignore
       }
@@ -300,7 +331,7 @@ export function subscribeYoklamalar(callback: (data: Record<string, Record<numbe
 
 export async function fetchYoklamalar(): Promise<Record<string, Record<number, string>>> {
   try {
-    const snap = await getDocs(collection(db, YOKLAMA_COL));
+    const snap = await getDocs(userCol(YOKLAMA_COL));
     const data: Record<string, Record<number, string>> = {};
     snap.forEach((d) => {
       const raw = d.data().kayitlar || {};
@@ -318,23 +349,23 @@ export async function fetchYoklamalar(): Promise<Record<string, Record<number, s
 }
 
 export async function saveYoklamaGunu(key: string, kayitlar: Record<number, string>): Promise<void> {
-  // String key dönüştürme (Firestore object field için güvenli)
   const safeKayitlar: Record<string, string> = {};
   Object.entries(kayitlar).forEach(([id, val]) => {
     safeKayitlar[String(id)] = val;
   });
-  await setDoc(doc(db, YOKLAMA_COL, key), { kayitlar: safeKayitlar, updatedAt: new Date().toISOString() });
+  await setDoc(userDoc(YOKLAMA_COL, key), { kayitlar: safeKayitlar, updatedAt: new Date().toISOString() });
 }
 
 // ==============================
-// 4. DERS PROGRAMI (Firestore)
+// 4. DERS PROGRAMI (Kullanıcıya Özel)
 // ==============================
 
 const PROGRAM_COL = "ders_programlari";
+const AYARLAR_COL = "ayarlar";
 
 export async function fetchDersProgrami(sinif: string, sube: string): Promise<Record<string, Record<string, string>> | null> {
   try {
-    const d = await getDoc(doc(db, PROGRAM_COL, `${sinif}-${sube}`));
+    const d = await getDoc(userDoc(PROGRAM_COL, `${sinif}-${sube}`));
     if (d.exists()) {
       return d.data().program;
     }
@@ -346,13 +377,26 @@ export async function fetchDersProgrami(sinif: string, sube: string): Promise<Re
 }
 
 export async function saveDersProgrami(sinif: string, sube: string, program: Record<string, Record<string, string>>): Promise<void> {
-  await setDoc(doc(db, PROGRAM_COL, `${sinif}-${sube}`), { program });
+  await setDoc(userDoc(PROGRAM_COL, `${sinif}-${sube}`), { program });
+}
+
+export function subscribeDersProgrami(sinif: string, sube: string, callback: (program: Record<string, Record<string, string>> | null) => void) {
+  return onSnapshot(userDoc(PROGRAM_COL, `${sinif}-${sube}`), (snap) => {
+    if (snap.exists() && snap.data()?.program) {
+      callback(snap.data().program);
+    } else {
+      callback(null);
+    }
+  }, (err) => {
+    console.warn("Firestore ders programi subscription error:", err);
+  });
 }
 
 export function subscribeDersSaatleri(callback: (saatler: string[]) => void) {
+  const cacheKey = userCacheKey("egitim_ders_saatleri_cache");
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_ders_saatleri_cache");
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         callback(JSON.parse(cached));
       }
@@ -361,12 +405,12 @@ export function subscribeDersSaatleri(callback: (saatler: string[]) => void) {
     }
   }
 
-  return onSnapshot(doc(db, AYARLAR_COL, "ders_saatleri"), (snap) => {
+  return onSnapshot(userDoc(AYARLAR_COL, "ders_saatleri"), (snap) => {
     if (snap.exists() && snap.data()?.saatler && Array.isArray(snap.data()?.saatler)) {
       const list = snap.data()?.saatler;
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem("egitim_ders_saatleri_cache", JSON.stringify(list));
+          localStorage.setItem(cacheKey, JSON.stringify(list));
         } catch {
           // ignore
         }
@@ -379,14 +423,15 @@ export function subscribeDersSaatleri(callback: (saatler: string[]) => void) {
 }
 
 export async function saveDersSaatleri(saatler: string[]): Promise<void> {
+  const cacheKey = userCacheKey("egitim_ders_saatleri_cache");
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem("egitim_ders_saatleri_cache", JSON.stringify(saatler));
+      localStorage.setItem(cacheKey, JSON.stringify(saatler));
     } catch {
       // ignore
     }
   }
-  await setDoc(doc(db, AYARLAR_COL, "ders_saatleri"), {
+  await setDoc(userDoc(AYARLAR_COL, "ders_saatleri"), {
     saatler,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
@@ -398,9 +443,10 @@ export interface DersBilgisi {
 }
 
 export function subscribeDersler(callback: (dersler: DersBilgisi[]) => void) {
+  const cacheKey = userCacheKey("egitim_dersler_listesi_cache");
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_dersler_listesi_cache");
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         callback(JSON.parse(cached));
       }
@@ -409,12 +455,12 @@ export function subscribeDersler(callback: (dersler: DersBilgisi[]) => void) {
     }
   }
 
-  return onSnapshot(doc(db, AYARLAR_COL, "dersler_listesi"), (snap) => {
+  return onSnapshot(userDoc(AYARLAR_COL, "dersler_listesi"), (snap) => {
     if (snap.exists() && snap.data()?.dersler && Array.isArray(snap.data()?.dersler)) {
       const list = snap.data()?.dersler;
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem("egitim_dersler_listesi_cache", JSON.stringify(list));
+          localStorage.setItem(cacheKey, JSON.stringify(list));
         } catch {
           // ignore
         }
@@ -427,21 +473,76 @@ export function subscribeDersler(callback: (dersler: DersBilgisi[]) => void) {
 }
 
 export async function saveDersler(dersler: DersBilgisi[]): Promise<void> {
+  const cacheKey = userCacheKey("egitim_dersler_listesi_cache");
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem("egitim_dersler_listesi_cache", JSON.stringify(dersler));
+      localStorage.setItem(cacheKey, JSON.stringify(dersler));
     } catch {
       // ignore
     }
   }
-  await setDoc(doc(db, AYARLAR_COL, "dersler_listesi"), {
+  await setDoc(userDoc(AYARLAR_COL, "dersler_listesi"), {
     dersler,
     updatedAt: new Date().toISOString(),
   }, { merge: true });
 }
 
+export interface OgretmenBilgisi {
+  id: number;
+  ad: string;
+  soyad: string;
+  brans: string;
+  telefon?: string;
+  eposta?: string;
+}
+
+export function subscribeOgretmenlerListesi(callback: (ogretmenler: OgretmenBilgisi[]) => void) {
+  const cacheKey = userCacheKey("egitim_ogretmenler_cache");
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        callback(JSON.parse(cached));
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return onSnapshot(userDoc(AYARLAR_COL, "ogretmenler_listesi"), (snap) => {
+    if (snap.exists() && snap.data()?.ogretmenler && Array.isArray(snap.data()?.ogretmenler)) {
+      const list = snap.data()?.ogretmenler;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(list));
+        } catch {
+          // ignore
+        }
+      }
+      callback(list);
+    }
+  }, (err) => {
+    console.warn("Firestore ogretmenler subscription error:", err);
+  });
+}
+
+export async function saveOgretmenlerListesi(ogretmenler: OgretmenBilgisi[]): Promise<void> {
+  const cacheKey = userCacheKey("egitim_ogretmenler_cache");
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(ogretmenler));
+    } catch {
+      // ignore
+    }
+  }
+  await setDoc(userDoc(AYARLAR_COL, "ogretmenler_listesi"), {
+    ogretmenler,
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+}
+
 // ==============================
-// 5. ÖĞRENCİ NOTLARI & ORTALAMA (Firestore)
+// 5. ÖĞRENCİ NOTLARI & ORTALAMA (Kullanıcıya Özel)
 // ==============================
 
 const NOTLAR_COL = "ogrenci_notlari";
@@ -464,7 +565,7 @@ export interface OgrenciNotKaydi {
 
 export async function fetchTumOgrenciNotlari(): Promise<Record<string, KayitliDersNotu[]>> {
   try {
-    const snap = await getDocs(collection(db, NOTLAR_COL));
+    const snap = await getDocs(userCol(NOTLAR_COL));
     const result: Record<string, KayitliDersNotu[]> = {};
     snap.forEach((d) => {
       const data = d.data() as OgrenciNotKaydi;
@@ -478,7 +579,7 @@ export async function fetchTumOgrenciNotlari(): Promise<Record<string, KayitliDe
 }
 
 export function subscribeTumOgrenciNotlari(callback: (notlar: Record<string, KayitliDersNotu[]>) => void) {
-  return onSnapshot(collection(db, NOTLAR_COL), (snap) => {
+  return onSnapshot(userCol(NOTLAR_COL), (snap) => {
     const result: Record<string, KayitliDersNotu[]> = {};
     snap.forEach((d) => {
       const data = d.data() as OgrenciNotKaydi;
@@ -491,7 +592,7 @@ export function subscribeTumOgrenciNotlari(callback: (notlar: Record<string, Kay
 }
 
 export async function saveOgrenciNotlari(ogrenciId: string, dersler: KayitliDersNotu[]): Promise<void> {
-  await setDoc(doc(db, NOTLAR_COL, ogrenciId), {
+  await setDoc(userDoc(NOTLAR_COL, ogrenciId), {
     ogrenciId,
     dersler,
     guncellenmeTarihi: new Date().toISOString(),
@@ -499,11 +600,10 @@ export async function saveOgrenciNotlari(ogrenciId: string, dersler: KayitliDers
 }
 
 // ==============================
-// 6. AİDAT TAKİP (Firestore)
+// 6. AİDAT TAKİP (Kullanıcıya Özel)
 // ==============================
 
 const AIDAT_COL = "aidat_kayitlari";
-const AYARLAR_COL = "ayarlar";
 
 export interface AyOdemeData {
   tutar: number;
@@ -518,7 +618,7 @@ export interface OgrenciAidatData {
 }
 
 export function subscribeAidatKayitlari(callback: (data: Record<string, OgrenciAidatData>) => void) {
-  return onSnapshot(collection(db, AIDAT_COL), (snap) => {
+  return onSnapshot(userCol(AIDAT_COL), (snap) => {
     const result: Record<string, OgrenciAidatData> = {};
     snap.forEach((d) => {
       result[d.id] = d.data() as OgrenciAidatData;
@@ -530,11 +630,11 @@ export function subscribeAidatKayitlari(callback: (data: Record<string, OgrenciA
 }
 
 export async function saveAidatKaydi(ogrenciId: string | number, aidat: OgrenciAidatData): Promise<void> {
-  await setDoc(doc(db, AIDAT_COL, String(ogrenciId)), aidat);
+  await setDoc(userDoc(AIDAT_COL, String(ogrenciId)), aidat);
 }
 
 export function subscribeGlobalAidat(callback: (tutar: number) => void) {
-  return onSnapshot(doc(db, AYARLAR_COL, "aidat"), (snap) => {
+  return onSnapshot(userDoc(AYARLAR_COL, "aidat"), (snap) => {
     if (snap.exists() && snap.data()?.globalAylikAidat) {
       callback(snap.data().globalAylikAidat);
     }
@@ -544,11 +644,11 @@ export function subscribeGlobalAidat(callback: (tutar: number) => void) {
 }
 
 export async function saveGlobalAidat(globalAylikAidat: number): Promise<void> {
-  await setDoc(doc(db, AYARLAR_COL, "aidat"), { globalAylikAidat }, { merge: true });
+  await setDoc(userDoc(AYARLAR_COL, "aidat"), { globalAylikAidat }, { merge: true });
 }
 
 // ==============================
-// 7. NÖBET ÇİZELGESİ (Firestore)
+// 7. NÖBET ÇİZELGESİ (Kullanıcıya Özel)
 // ==============================
 
 const NOBET_COL = "nobet_cizelgeleri";
@@ -560,7 +660,7 @@ export interface NobetAtamasiData {
 }
 
 export function subscribeNobetAtamalari(callback: (atamalar: NobetAtamasiData[]) => void) {
-  return onSnapshot(doc(db, NOBET_COL, "aktif_cizelge"), (snap) => {
+  return onSnapshot(userDoc(NOBET_COL, "aktif_cizelge"), (snap) => {
     if (snap.exists() && snap.data()?.atamalar) {
       callback(snap.data().atamalar);
     }
@@ -570,82 +670,14 @@ export function subscribeNobetAtamalari(callback: (atamalar: NobetAtamasiData[])
 }
 
 export async function saveNobetAtamalari(atamalar: NobetAtamasiData[]): Promise<void> {
-  await setDoc(doc(db, NOBET_COL, "aktif_cizelge"), {
+  await setDoc(userDoc(NOBET_COL, "aktif_cizelge"), {
     atamalar,
     updatedAt: new Date().toISOString(),
   });
 }
 
-export interface OgretmenBilgisi {
-  id: number;
-  ad: string;
-  soyad: string;
-  brans: string;
-  telefon?: string;
-  eposta?: string;
-}
-
-export function subscribeOgretmenlerListesi(callback: (ogretmenler: OgretmenBilgisi[]) => void) {
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem("egitim_ogretmenler_cache");
-      if (cached) {
-        callback(JSON.parse(cached));
-      }
-    } catch {
-      // ignore
-    }
-  }
-
-  return onSnapshot(doc(db, AYARLAR_COL, "ogretmenler_listesi"), (snap) => {
-    if (snap.exists() && snap.data()?.ogretmenler && Array.isArray(snap.data()?.ogretmenler)) {
-      const list = snap.data()?.ogretmenler;
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem("egitim_ogretmenler_cache", JSON.stringify(list));
-        } catch {
-          // ignore
-        }
-      }
-      callback(list);
-    }
-  }, (err) => {
-    console.warn("Firestore ogretmenler subscription error:", err);
-  });
-}
-
-export async function saveOgretmenlerListesi(ogretmenler: OgretmenBilgisi[]): Promise<void> {
-  if (typeof window !== "undefined") {
-    try {
-      localStorage.setItem("egitim_ogretmenler_cache", JSON.stringify(ogretmenler));
-    } catch {
-      // ignore
-    }
-  }
-  await setDoc(doc(db, AYARLAR_COL, "ogretmenler_listesi"), {
-    ogretmenler,
-    updatedAt: new Date().toISOString(),
-  }, { merge: true });
-}
-
 // ==============================
-// 8. DERS PROGRAMI CANLI ABONELİK (Firestore)
-// ==============================
-
-export function subscribeDersProgrami(sinif: string, sube: string, callback: (program: Record<string, Record<string, string>> | null) => void) {
-  return onSnapshot(doc(db, PROGRAM_COL, `${sinif}-${sube}`), (snap) => {
-    if (snap.exists() && snap.data()?.program) {
-      callback(snap.data().program);
-    } else {
-      callback(null);
-    }
-  }, (err) => {
-    console.warn("Firestore ders programi subscription error:", err);
-  });
-}
-
-// ==============================
-// 9. TESTLER & NET ANALİZİ (Firestore)
+// 8. TESTLER & NET ANALİZİ (Kullanıcıya Özel)
 // ==============================
 
 const TESTLER_COL = "testler";
@@ -668,10 +700,10 @@ export interface TestDocData {
 }
 
 export function subscribeTestler(sinif: string, sube: string, callback: (testler: TestDocData[]) => void) {
-  // Önbellek yükle
+  const cacheKey = userCacheKey(`egitim_testler_cache_${sinif}_${sube}`);
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem(`egitim_testler_cache_${sinif}_${sube}`);
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         callback(JSON.parse(cached));
       }
@@ -680,7 +712,7 @@ export function subscribeTestler(sinif: string, sube: string, callback: (testler
     }
   }
 
-  return onSnapshot(collection(db, TESTLER_COL), (snap) => {
+  return onSnapshot(userCol(TESTLER_COL), (snap) => {
     const list: TestDocData[] = [];
     snap.forEach((d) => {
       const data = d.data() as TestDocData;
@@ -692,7 +724,7 @@ export function subscribeTestler(sinif: string, sube: string, callback: (testler
 
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(`egitim_testler_cache_${sinif}_${sube}`, JSON.stringify(list));
+        localStorage.setItem(cacheKey, JSON.stringify(list));
       } catch {
         // ignore
       }
@@ -713,7 +745,7 @@ export async function saveTest(test: TestDocData): Promise<void> {
       bos: k.bos === "" ? "" : Number(k.bos),
     };
   });
-  await setDoc(doc(db, TESTLER_COL, test.id), {
+  await setDoc(userDoc(TESTLER_COL, test.id), {
     ...test,
     kayitlar: cleanKayitlar,
     updatedAt: new Date().toISOString(),
@@ -721,11 +753,11 @@ export async function saveTest(test: TestDocData): Promise<void> {
 }
 
 export async function deleteTest(testId: string): Promise<void> {
-  await deleteDoc(doc(db, TESTLER_COL, testId));
+  await deleteDoc(userDoc(TESTLER_COL, testId));
 }
 
 // ==============================
-// 10. PERSONEL LİSTESİ (Firestore)
+// 9. PERSONEL LİSTESİ (Kullanıcıya Özel)
 // ==============================
 
 const PERSONEL_COL = "personeller";
@@ -738,9 +770,10 @@ export interface PersonelData {
 }
 
 export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
+  const cacheKey = userCacheKey("egitim_personeller_cache");
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem("egitim_personeller_cache");
+      const cached = localStorage.getItem(cacheKey);
       if (cached) {
         callback(JSON.parse(cached));
       }
@@ -749,7 +782,7 @@ export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
     }
   }
 
-  return onSnapshot(collection(db, PERSONEL_COL), (snap) => {
+  return onSnapshot(userCol(PERSONEL_COL), (snap) => {
     const list: PersonelData[] = [];
     snap.forEach((d) => {
       list.push(d.data() as PersonelData);
@@ -758,7 +791,7 @@ export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
 
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem("egitim_personeller_cache", JSON.stringify(list));
+        localStorage.setItem(cacheKey, JSON.stringify(list));
       } catch {
         // ignore
       }
@@ -770,14 +803,12 @@ export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
 }
 
 export async function savePersonel(personel: PersonelData): Promise<void> {
-  await setDoc(doc(db, PERSONEL_COL, String(personel.id)), {
+  await setDoc(userDoc(PERSONEL_COL, String(personel.id)), {
     ...personel,
     updatedAt: new Date().toISOString(),
   });
 }
 
 export async function deletePersonel(id: number | string): Promise<void> {
-  await deleteDoc(doc(db, PERSONEL_COL, String(id)));
+  await deleteDoc(userDoc(PERSONEL_COL, String(id)));
 }
-
-

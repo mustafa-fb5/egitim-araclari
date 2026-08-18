@@ -163,8 +163,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       proDaysLeft: daysLeft,
     };
     setUser(fullUser);
-    localStorage.setItem(SESSION_KEY, JSON.stringify(fullUser));
-    saveLocalUser(fullUser);
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify(fullUser));
+      saveLocalUser(fullUser);
+    } catch {
+      // ignore
+    }
+    if (typeof window !== "undefined") {
+      window.location.reload();
+    }
   };
 
   // =================== KAYIT OL (ANINDA YANIT) ===================
@@ -352,7 +359,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {
+      // ignore
+    }
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   // ================= ADMIN METODLARI =================
