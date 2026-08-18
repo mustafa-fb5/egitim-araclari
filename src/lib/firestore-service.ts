@@ -101,13 +101,26 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
   }
 }
 
-// Son gönderilen veriyi tutarak gereksiz render'ları engeller
-let _lastOgrencilerJson = "";
-
 export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
-  // İlk veriyi getInitialOgrenciler() zaten sağlıyor, burada tekrar cache callback yapmıyoruz.
-  // Böylece mount sırasında "cache → boş → demo" üçlü titremesi (flicker) önlenir.
+  let lastSentJson = "";
 
+  // 1. Varsa önbellekteki veriyi hemen aktar
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          lastSentJson = cached;
+          callback(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Firestore gerçek zamanlı dinleyici
   return onSnapshot(userCol(OGRENCILER_COL), (snap) => {
     const list: Ogrenci[] = [];
     snap.forEach((d) => list.push(d.data() as Ogrenci));
@@ -118,10 +131,9 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
       ? demoOgrenciler.slice(0, 4)
       : list;
 
-    // Değişiklik yoksa callback'i tetikleme (gereksiz re-render engellenir)
     const json = JSON.stringify(finalResult);
-    if (json === _lastOgrencilerJson) return;
-    _lastOgrencilerJson = json;
+    if (json === lastSentJson) return;
+    lastSentJson = json;
 
     if (typeof window !== "undefined") {
       try {
@@ -133,8 +145,14 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     
     callback(finalResult);
   }, (err) => {
-    console.warn("Firestore subscription error:", err);
-    // Hata durumunda zaten getInitialOgrenciler() ile ilk veri yüklü, ekstra işlem gerekmez
+    console.warn("Firestore subscription warning (offline or guest):", err);
+    // Hata durumunda (offline veya misafir yetkisi yoksa) önbellek veya varsayılan 4 öğrenciyi dön
+    const fallback = getInitialOgrenciler();
+    const json = JSON.stringify(fallback);
+    if (json !== lastSentJson) {
+      lastSentJson = json;
+      callback(fallback);
+    }
   });
 }
 
@@ -208,16 +226,31 @@ export async function fetchSinavlar(): Promise<SinavData[]> {
   }
 }
 
-let _lastSinavlarJson = "";
-
 export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
+  let lastSentJson = "";
+
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(userCacheKey("egitim_sinavlar_cache"));
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          lastSentJson = cached;
+          callback(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return onSnapshot(userCol(SINAVLAR_COL), (snap) => {
     const list: SinavData[] = [];
     snap.forEach((d) => list.push(d.data() as SinavData));
     
     const json = JSON.stringify(list);
-    if (json === _lastSinavlarJson) return;
-    _lastSinavlarJson = json;
+    if (json === lastSentJson) return;
+    lastSentJson = json;
 
     if (typeof window !== "undefined") {
       try {
@@ -753,9 +786,24 @@ export interface PersonelData {
   brans: string;
 }
 
-let _lastPersonellerJson = "";
-
 export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
+  let lastSentJson = "";
+
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(userCacheKey("egitim_personeller_cache"));
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          lastSentJson = cached;
+          callback(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return onSnapshot(userCol(PERSONEL_COL), (snap) => {
     const list: PersonelData[] = [];
     snap.forEach((d) => {
@@ -764,8 +812,8 @@ export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
     list.sort((a, b) => a.adSoyad.localeCompare(b.adSoyad, "tr"));
 
     const json = JSON.stringify(list);
-    if (json === _lastPersonellerJson) return;
-    _lastPersonellerJson = json;
+    if (json === lastSentJson) return;
+    lastSentJson = json;
 
     if (typeof window !== "undefined") {
       try {
