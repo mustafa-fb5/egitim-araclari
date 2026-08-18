@@ -239,19 +239,18 @@ export default function YoklamaPage() {
         {filtrelenmisOgrenciler.length === 0 ? (
           <p className="text-center text-[var(--muted-foreground)] py-6 text-sm">Seçilen kriterlere uygun öğrenci bulunamadı.</p>
         ) : (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {filtrelenmisOgrenciler.map((ogrenci, i) => (
               <div
                 key={ogrenci.id}
-                className={`flex items-center justify-between py-2 px-3.5 rounded-xl border border-[var(--border)] hover:bg-[var(--secondary)]/40 transition-all animate-slide-up stagger-${Math.min(i + 1, 10)}`}
-                style={{ opacity: 0 }}
+                className={`flex flex-col sm:flex-row sm:items-center justify-between py-2.5 px-3.5 rounded-xl border border-[var(--border)] hover:bg-[var(--secondary)]/40 transition-all animate-slide-up stagger-${Math.min(i + 1, 10)} gap-2`}
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-7 h-7 rounded-lg gradient-bg flex items-center justify-center text-white text-xs font-bold shrink-0">
+                  <div className="w-8 h-8 rounded-lg gradient-bg flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-xs">
                     {ogrenci.numara}
                   </div>
                   <div className="flex items-center gap-2 truncate">
-                    <p className="font-semibold text-xs sm:text-sm text-[var(--foreground)] truncate">
+                    <p className="font-bold text-xs sm:text-sm text-[var(--foreground)] truncate">
                       {ogrenci.ad} {ogrenci.soyad}
                     </p>
                     <span className="badge-info px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0">
@@ -259,15 +258,15 @@ export default function YoklamaPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-1.5 shrink-0">
+                <div className="flex gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto">
                   {(["var", "yok", "izinli"] as YoklamaDurum[]).map((durum) => (
                     <button
                       key={durum}
                       onClick={() => durumDegistir(ogrenci.id, durum)}
-                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                      className={`flex-1 sm:flex-initial px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer touch-manipulation active:scale-95 border ${
                         yoklamalar[ogrenci.id] === durum
-                          ? durumRenk(durum)
-                          : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:opacity-80"
+                          ? durumRenk(durum) + " border-transparent shadow-md"
+                          : "bg-[var(--secondary)] text-[var(--muted-foreground)] border-[var(--border)] hover:bg-[var(--accent)] hover:text-white"
                       }`}
                     >
                       {durum === "var" ? "VAR" : durum === "yok" ? "YOK" : "İZİNLİ"}

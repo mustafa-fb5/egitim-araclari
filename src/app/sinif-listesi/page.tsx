@@ -16,6 +16,13 @@ export default function SinifListesiPage() {
 
   const { isPro, openProModal } = useAuth();
 
+  // Mobil ekranlarda otomatik olarak Kart görünümüne geç
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setGorunum("kart");
+    }
+  }, []);
+
   // Firestore Realtime Subscription
   useEffect(() => {
     const unsubscribe = subscribeOgrenciler((data) => {
@@ -473,8 +480,7 @@ export default function SinifListesiPage() {
           {filtrelenmis.map((ogr, i) => (
             <div
               key={ogr.id}
-              className={`glass-card rounded-2xl p-5 card-hover animate-slide-up stagger-${Math.min(i + 1, 10)}`}
-              style={{ opacity: 0 }}
+              className={`glass-card rounded-2xl p-4 sm:p-5 card-hover animate-slide-up stagger-${Math.min(i + 1, 10)}`}
             >
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-md">

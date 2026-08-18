@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 // Ücretsiz erişilebilen sayfalar
@@ -30,6 +30,23 @@ export default function Sidebar() {
   const [iletisimAcik, setIletisimAcik] = useState(false);
   const { isPro, isAdmin, openProModal } = useAuth();
 
+  // Sayfa değiştiğinde mobil menüyü otomatik kapat (Sayfaya tıklamama sorununu çözer)
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  // Mobil menü açıkken arka plan kaydırmasını engelle
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   const handleProClick = (e: React.MouseEvent, label: string) => {
     e.preventDefault();
     openProModal(label);
@@ -38,13 +55,13 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Mobile Hamburger */}
+      {/* Mobile Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden w-10 h-10 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform"
+        className="fixed top-3 left-3 z-50 lg:hidden w-11 h-11 rounded-2xl bg-[var(--primary)] text-white flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 touch-manipulation"
         aria-label="Menüyü aç/kapat"
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
           {isOpen ? (
             <>
               <line x1="18" y1="6" x2="6" y2="18" />
@@ -63,7 +80,7 @@ export default function Sidebar() {
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden animate-fade-in"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-30 lg:hidden animate-fade-in touch-none"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -72,11 +89,11 @@ export default function Sidebar() {
       <aside
         className={`fixed top-0 left-0 h-full w-72 z-40 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } bg-[var(--sidebar)] border-r border-[var(--border)] shadow-sm`}
+        } bg-[var(--sidebar)] border-r border-[var(--border)] shadow-xl lg:shadow-sm`}
       >
-        {/* Logo */}
-        <div className="p-5 border-b border-[var(--border)]">
-          <Link href="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
+        {/* Logo (Hamburger butonunun üst üste binmesini önlemek için mobilde pl-14 eklendi) */}
+        <div className="p-4 sm:p-5 border-b border-[var(--border)] pl-16 lg:pl-5">
+          <Link href="/" className="flex items-center gap-3 group">
             <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-md group-hover:scale-105 transition-transform bg-white/5 p-1 border border-[var(--border)] flex items-center justify-center shrink-0">
               <img
                 src="/logo.png"
@@ -104,7 +121,7 @@ export default function Sidebar() {
                   key={item.href}
                   type="button"
                   onClick={(e) => handleProClick(e, item.label)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-55 hover:opacity-85 hover:bg-amber-500/10 hover:border-amber-500/25 cursor-pointer backdrop-blur-sm sidebar-nav-link text-left"
+                  className="w-full flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-55 hover:opacity-85 hover:bg-amber-500/10 hover:border-amber-500/25 cursor-pointer backdrop-blur-sm sidebar-nav-link text-left touch-manipulation"
                 >
                   <span className="text-lg grayscale group-hover:grayscale-0 transition-all">
                     {item.icon}
@@ -125,8 +142,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 prefetch={true}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border ${
+                className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"
                     : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 backdrop-blur-sm sidebar-nav-link"

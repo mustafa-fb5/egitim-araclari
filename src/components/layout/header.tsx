@@ -65,8 +65,8 @@ export default function Header() {
       <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-xl">
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5">
           {/* Sol: Başlık */}
-          <div className="pl-12 lg:pl-0">
-            <h2 className="text-lg sm:text-xl font-black text-[var(--foreground)]">{page.title}</h2>
+          <div className="pl-14 sm:pl-16 lg:pl-0">
+            <h2 className="text-base sm:text-xl font-black text-[var(--foreground)] truncate">{page.title}</h2>
             <p className="text-xs text-[var(--muted-foreground)] hidden sm:block">{page.description}</p>
           </div>
 
