@@ -107,8 +107,10 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
           {defaultMenuItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
-            const requiresPro = !freeRoutes.includes(item.href);
+            const currentNorm = (pathname || "/").replace(/\/+$/, "") || "/";
+            const itemNorm = (item.href || "/").replace(/\/+$/, "") || "/";
+            const isActive = currentNorm === itemNorm || (itemNorm !== "/" && currentNorm.startsWith(itemNorm));
+            const requiresPro = !freeRoutes.some((fr) => (fr.replace(/\/+$/, "") || "/") === itemNorm);
             const isLocked = requiresPro && !isPro;
 
             if (isLocked) {
@@ -141,7 +143,7 @@ export default function Sidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                prefetch={true}
+                prefetch={false}
                 className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"

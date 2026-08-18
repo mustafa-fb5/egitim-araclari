@@ -7,6 +7,12 @@
       "**/node_modules/**"
     ],
     "trailingSlash": true,
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
     "headers": [
       {
         "source": "/_next/static/**",
