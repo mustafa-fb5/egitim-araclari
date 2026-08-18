@@ -27,10 +27,15 @@ export default function Header() {
   const page = pageTitles[pathname] || { title: "Eğitim Araçları", description: "" };
 
   const { user, isAdmin, logout } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [initialTab, setInitialTab] = useState<"login" | "register">("login");
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Dışarı tıklandığında dropdown kapat
   useEffect(() => {
@@ -76,8 +81,10 @@ export default function Header() {
             {/* Tema Butonu */}
             <ThemeToggle />
 
-            {/* Kullanıcı Durumu (Giriş Yapılmamışsa) */}
-            {!user ? (
+            {/* Kullanıcı Durumu (Mounted kontrolü ile Hydration Mismatch önlenir) */}
+            {!mounted ? (
+              <div className="w-24 h-8 rounded-xl bg-[var(--secondary)] animate-pulse" />
+            ) : !user ? (
               <button
                 onClick={() => openAuth("login")}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 active:scale-95 transition-all shadow-md flex items-center gap-1.5 cursor-pointer"

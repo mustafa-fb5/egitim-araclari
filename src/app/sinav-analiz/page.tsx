@@ -8,6 +8,7 @@ import {
   saveSinav, 
   deleteSinav as deleteSinavFromDb, 
   subscribeOgrenciler,
+  getInitialOgrenciler,
   type SinavData as Sinav 
 } from "@/lib/firestore-service";
 
@@ -31,7 +32,7 @@ export default function SinavAnalizPage() {
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_sinav_analiz_sinif", "8");
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_sinav_analiz_sube", "A");
   
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [sinavlar, setSinavlar] = useState<Sinav[]>([]);
   const [secilenSinavId, setSecilenSinavId] = useState<number | null>(null);
   const [yeniSinavAdi, setYeniSinavAdi] = useState("");

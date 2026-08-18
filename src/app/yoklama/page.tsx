@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
+import { sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { subscribeOgrenciler, subscribeYoklamalar, saveYoklamaGunu } from "@/lib/firestore-service";
+import { subscribeOgrenciler, subscribeYoklamalar, saveYoklamaGunu, getInitialOgrenciler } from "@/lib/firestore-service";
 
 type YoklamaDurum = "var" | "yok" | "izinli";
 
@@ -11,7 +11,7 @@ export default function YoklamaPage() {
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_yoklama_sinif", "Tümü");
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_yoklama_sube", "Tümü");
   const [tarih, setTarih] = useState(new Date().toISOString().split("T")[0]);
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [yoklamalar, setYoklamalar] = useState<Record<number, YoklamaDurum>>({});
   const [kayitliGunler, setKayitliGunler] = useState<Record<string, Record<number, string>>>({});
 

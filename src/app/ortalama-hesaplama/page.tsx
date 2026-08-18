@@ -7,6 +7,7 @@ import {
   subscribeOgrenciler, 
   subscribeTumOgrenciNotlari, 
   saveOgrenciNotlari,
+  getInitialOgrenciler,
 } from "@/lib/firestore-service";
 
 export interface MebDersSatiri {
@@ -120,7 +121,7 @@ export const mebBelgeDurumu = (
 };
 
 export default function OrtalamaHesaplamaPage() {
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_ortalama_sinif", "5");
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_ortalama_sube", "A");
   const [secilenOgrenciId, setSecilenOgrenciId] = usePersistentState<string>("egitim_ortalama_ogrenci_id", "1");

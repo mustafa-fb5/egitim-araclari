@@ -8,6 +8,7 @@ import {
   subscribeTestler,
   saveTest,
   deleteTest,
+  getInitialOgrenciler,
   type TestDocData as TestDoc,
   type OgrenciTestKayit as OgrenciKayit,
 } from "@/lib/firestore-service";
@@ -54,7 +55,7 @@ export default function TestlerPage() {
   const [secilenDers, setSecilenDers]   = usePersistentState<DersId>("egitim_testler_secilen_ders", "turkce");
 
   // Öğrenciler
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
 
   useEffect(() => {
     const unsub = subscribeOgrenciler((list) => setOgrenciler(list));

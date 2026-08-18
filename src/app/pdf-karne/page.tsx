@@ -6,6 +6,7 @@ import { usePersistentState } from "@/lib/use-persistent-state";
 import { 
   subscribeOgrenciler, 
   subscribeSinavlar, 
+  getInitialOgrenciler,
   type SinavData as Sinav 
 } from "@/lib/firestore-service";
 
@@ -51,7 +52,7 @@ const trToEn = (str: string): string => {
 
 export default function PdfKarnePage() {
   const [karneTuru, setKarneTuru] = useState<"toplu_sinav_gecmis" | "sinav_analiz">("toplu_sinav_gecmis");
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [sinavlar, setSinavlar] = useState<Sinav[]>([]);
   const [secilenSinavId, setSecilenSinavId] = useState<string>("otomatik");
 

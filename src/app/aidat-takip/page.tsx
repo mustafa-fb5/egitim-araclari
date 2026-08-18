@@ -9,6 +9,7 @@ import {
   saveAidatKaydi, 
   subscribeGlobalAidat, 
   saveGlobalAidat,
+  getInitialOgrenciler,
   type OgrenciAidatData,
   type AyOdemeData
 } from "@/lib/firestore-service";
@@ -62,7 +63,7 @@ const durumLabel = (durum: OdemeDurumu) => {
 };
 
 export default function AidatTakipPage() {
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_aidat_sinif", "Tümü");
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_aidat_sube", "Tümü");
   const [aramaMetni, setAramaMetni] = useState("");

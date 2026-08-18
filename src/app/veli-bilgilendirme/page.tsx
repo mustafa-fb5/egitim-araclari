@@ -1,21 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { demoOgrenciler, mesajSablonlari, type Ogrenci } from "@/lib/data";
-import { subscribeOgrenciler } from "@/lib/firestore-service";
+import { mesajSablonlari, type Ogrenci } from "@/lib/data";
+import { subscribeOgrenciler, getInitialOgrenciler } from "@/lib/firestore-service";
 
 type SablonTuru = "devamsizlik" | "basariDurumu" | "toplanti" | "genel";
 
 export default function VeliBilgilendirmePage() {
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
-  const [secilenOgrenci, setSecilenOgrenci] = useState<Ogrenci>(demoOgrenciler[0]);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
+  const [secilenOgrenci, setSecilenOgrenci] = useState<Ogrenci | null>(() => {
+    const init = getInitialOgrenciler();
+    return init.length > 0 ? init[0] : null;
+  });
   const [sablonTuru, setSablonTuru] = useState<SablonTuru>("devamsizlik");
 
   useEffect(() => {
     const unsub = subscribeOgrenciler((data) => {
       setOgrenciler(data);
       if (data.length > 0) {
-        setSecilenOgrenci(data[0]);
+        setSecilenOgrenci((prev) => (prev ? data.find((o) => o.id === prev.id) || data[0] : data[0]));
+      } else {
+        setSecilenOgrenci(null);
       }
     });
     return () => unsub();

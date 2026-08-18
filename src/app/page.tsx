@@ -7,6 +7,8 @@ import {
   subscribeOgrenciler,
   subscribePersoneller,
   subscribeSinavlar,
+  getInitialOgrenciler,
+  getInitialPersoneller,
   type SinavData,
 } from "@/lib/firestore-service";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -112,8 +114,8 @@ const tools = [
 ];
 
 export default function HomePage() {
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
-  const [personeller, setPersoneller] = useState<Personel[]>(demoPersoneller);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
+  const [personeller, setPersoneller] = useState<Personel[]>(getInitialPersoneller);
   const [sinavSayisi, setSinavSayisi] = useState(0);
   const [testSayisi, setTestSayisi] = useState(0);
 
@@ -121,16 +123,12 @@ export default function HomePage() {
   useEffect(() => {
     // 1. Öğrenciler
     const unsubOgr = subscribeOgrenciler((list) => {
-      if (list && list.length > 0) {
-        setOgrenciler(list);
-      }
+      setOgrenciler(list);
     });
 
     // 2. Personeller
     const unsubPer = subscribePersoneller((list) => {
-      if (list && list.length > 0) {
-        setPersoneller(list);
-      }
+      setPersoneller(list);
     });
 
     // 3. Sınavlar

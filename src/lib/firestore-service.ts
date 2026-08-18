@@ -21,15 +21,41 @@ import {
 
 const OGRENCILER_COL = "ogrenciler";
 
+export function getInitialOgrenciler(): Ogrenci[] {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
+export function getInitialPersoneller(): PersonelData[] {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_personeller_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return [];
+}
+
 export async function fetchOgrenciler(): Promise<Ogrenci[]> {
   try {
     const snap = await getDocs(collection(db, OGRENCILER_COL));
     if (snap.empty) {
-      // İlk defa açılıyorsa varsayılan demo verilerini Firestore'a yükle
-      for (const ogr of demoOgrenciler) {
-        await setDoc(doc(db, OGRENCILER_COL, String(ogr.id)), ogr);
-      }
-      return demoOgrenciler;
+      return [];
     }
     const list: Ogrenci[] = [];
     snap.forEach((d) => {
@@ -38,31 +64,92 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
     return list.sort((a, b) => Number(a.numara) - Number(b.numara));
   } catch (error) {
     console.error("Firestore fetchOgrenciler error:", error);
-    return demoOgrenciler;
+    return getInitialOgrenciler();
   }
 }
 
 export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
+  // İlk önce tarayıcı önbelleğindeki en son veriyi derhal yükle
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          callback(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return onSnapshot(collection(db, OGRENCILER_COL), (snap) => {
     if (snap.empty) {
-      callback(demoOgrenciler);
+      callback([]);
       return;
     }
     const list: Ogrenci[] = [];
     snap.forEach((d) => list.push(d.data() as Ogrenci));
     list.sort((a, b) => Number(a.numara) - Number(b.numara));
+    
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+      } catch {
+        // ignore
+      }
+    }
+    
     callback(list);
   }, (err) => {
     console.warn("Firestore subscription error:", err);
-    callback(demoOgrenciler);
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("egitim_ogrenciler_cache");
+        if (cached) {
+          callback(JSON.parse(cached));
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
   });
 }
 
 export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      let list: Ogrenci[] = cached ? JSON.parse(cached) : [];
+      const idx = list.findIndex((o) => o.id === ogrenci.id);
+      if (idx >= 0) {
+        list[idx] = ogrenci;
+      } else {
+        list.push(ogrenci);
+      }
+      localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+    } catch {
+      // ignore
+    }
+  }
   await setDoc(doc(db, OGRENCILER_COL, String(ogrenci.id)), ogrenci);
 }
 
 export async function deleteOgrenci(ogrenciId: number): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_ogrenciler_cache");
+      if (cached) {
+        let list: Ogrenci[] = JSON.parse(cached);
+        list = list.filter((o) => o.id !== ogrenciId);
+        localStorage.setItem("egitim_ogrenciler_cache", JSON.stringify(list));
+      }
+    } catch {
+      // ignore
+    }
+  }
   await deleteDoc(doc(db, OGRENCILER_COL, String(ogrenciId)));
 }
 
@@ -100,9 +187,32 @@ export async function fetchSinavlar(): Promise<SinavData[]> {
 }
 
 export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          callback(parsed);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return onSnapshot(collection(db, SINAVLAR_COL), (snap) => {
     const list: SinavData[] = [];
     snap.forEach((d) => list.push(d.data() as SinavData));
+    
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+      } catch {
+        // ignore
+      }
+    }
+    
     callback(list);
   }, (err) => {
     console.warn("Firestore sinavlar subscription error:", err);
@@ -110,10 +220,37 @@ export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
 }
 
 export async function saveSinav(sinav: SinavData): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      let list: SinavData[] = cached ? JSON.parse(cached) : [];
+      const idx = list.findIndex((s) => s.id === sinav.id);
+      if (idx >= 0) {
+        list[idx] = sinav;
+      } else {
+        list.push(sinav);
+      }
+      localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+    } catch {
+      // ignore
+    }
+  }
   await setDoc(doc(db, SINAVLAR_COL, String(sinav.id)), sinav);
 }
 
 export async function deleteSinav(sinavId: number): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem("egitim_sinavlar_cache");
+      if (cached) {
+        let list: SinavData[] = JSON.parse(cached);
+        list = list.filter((s) => s.id !== sinavId);
+        localStorage.setItem("egitim_sinavlar_cache", JSON.stringify(list));
+      }
+    } catch {
+      // ignore
+    }
+  }
   await deleteDoc(doc(db, SINAVLAR_COL, String(sinavId)));
 }
 

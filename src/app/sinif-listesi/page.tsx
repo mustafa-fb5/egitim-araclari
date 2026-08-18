@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
+import { sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { subscribeOgrenciler, saveOgrenci, deleteOgrenci as deleteOgrenciFromDb } from "@/lib/firestore-service";
+import { subscribeOgrenciler, saveOgrenci, deleteOgrenci as deleteOgrenciFromDb, getInitialOgrenciler } from "@/lib/firestore-service";
 import { useAuth } from "@/lib/auth-context";
 
 export default function SinifListesiPage() {
-  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_sinif_listesi_sinif", "Tümü");
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_sinif_listesi_sube", "Tümü");
   const [aramaMetni, setAramaMetni] = useState("");
@@ -288,103 +288,112 @@ export default function SinifListesiPage() {
         </div>
       )}
 
-      {/* Yeni Öğrenci Ekleme Formu */}
+      {/* Yeni Öğrenci Ekleme Modalı */}
       {formAcik && (
-        <div className="glass-card rounded-2xl p-6 animate-slide-up" style={{ opacity: 0 }}>
-          <h3 className="text-base font-bold text-[var(--foreground)] mb-4">➕ Yeni Öğrenci Ekle</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Ad Soyad</label>
-              <input
-                type="text"
-                value={yeniAdSoyad}
-                onChange={(e) => setYeniAdSoyad(e.target.value)}
-                placeholder="Örn: Ahmet Yılmaz"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in no-print">
+          <div className="glass-card bg-[var(--card)] rounded-2xl p-6 max-w-2xl w-full space-y-4 shadow-2xl border border-[var(--border)] max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-[var(--border)] pb-3">
+              <h3 className="text-lg font-bold text-[var(--foreground)]">➕ Yeni Öğrenci Ekle</h3>
+              <button onClick={() => setFormAcik(false)} className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] font-bold text-xl cursor-pointer">✕</button>
             </div>
 
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Numara</label>
-              <input
-                type="text"
-                value={yeniOgrenci.numara}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, numara: e.target.value })}
-                placeholder="Örn: 105"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Ad Soyad *</label>
+                <input
+                  type="text"
+                  value={yeniAdSoyad}
+                  onChange={(e) => setYeniAdSoyad(e.target.value)}
+                  placeholder="Örn: Ahmet Yılmaz"
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Okul Numarası *</label>
+                <input
+                  type="text"
+                  value={yeniOgrenci.numara}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, numara: e.target.value })}
+                  placeholder="Örn: 105"
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Cinsiyet</label>
+                <select
+                  value={yeniOgrenci.cinsiyet}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, cinsiyet: e.target.value as "E" | "K" })}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                >
+                  <option value="E">Erkek</option>
+                  <option value="K">Kız</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Sınıf (1 - 12)</label>
+                <select
+                  value={yeniOgrenci.sinif}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, sinif: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                >
+                  {sinifNumaralari.map((s) => (
+                    <option key={s} value={s}>{s}. Sınıf</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Şube (A - S)</label>
+                <select
+                  value={yeniOgrenci.sube}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, sube: e.target.value })}
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                >
+                  {subeler.map((sube) => (
+                    <option key={sube} value={sube}>{sube} Şubesi</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Veli Adı</label>
+                <input
+                  type="text"
+                  value={yeniOgrenci.veliAd}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliAd: e.target.value })}
+                  placeholder="Örn: Mehmet Yılmaz"
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Veli Telefon</label>
+                <input
+                  type="text"
+                  value={yeniOgrenci.veliTelefon}
+                  onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliTelefon: e.target.value })}
+                  placeholder="Örn: 0532 111 2233"
+                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Cinsiyet</label>
-              <select
-                value={yeniOgrenci.cinsiyet}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, cinsiyet: e.target.value as "E" | "K" })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              >
-                <option value="E">Erkek</option>
-                <option value="K">Kız</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Sınıf (1 - 12)</label>
-              <select
-                value={yeniOgrenci.sinif}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, sinif: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              >
-                {sinifNumaralari.map((s) => (
-                  <option key={s} value={s}>{s}. Sınıf</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Şube (A - S)</label>
-              <select
-                value={yeniOgrenci.sube}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, sube: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              >
-                {subeler.map((sube) => (
-                  <option key={sube} value={sube}>{sube} Şubesi</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Veli Adı</label>
-              <input
-                type="text"
-                value={yeniOgrenci.veliAd}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliAd: e.target.value })}
-                placeholder="Örn: Mehmet Yılmaz"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Veli Telefon</label>
-              <input
-                type="text"
-                value={yeniOgrenci.veliTelefon}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, veliTelefon: e.target.value })}
-                placeholder="Örn: 0532 111 2233"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
-            </div>
-
-            <div className="sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-end gap-2 mt-2">
+            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--border)]">
               <button
+                type="button"
                 onClick={() => setFormAcik(false)}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--secondary)] text-[var(--foreground)] hover:bg-gray-200 transition-all"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--secondary)] text-[var(--foreground)] hover:bg-gray-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
               >
-                İptal
+                Vazgeç
               </button>
               <button
+                type="button"
                 onClick={ekle}
-                className="px-6 py-2.5 rounded-xl text-sm font-medium bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
+                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white hover:bg-emerald-600 active:scale-95 transition-all shadow-md cursor-pointer"
               >
                 ✅ Öğrenciyi Kaydet
               </button>
