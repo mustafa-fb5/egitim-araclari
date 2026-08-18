@@ -101,20 +101,12 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
   }
 }
 
+// Son gönderilen veriyi tutarak gereksiz render'ları engeller
+let _lastOgrencilerJson = "";
+
 export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          callback(parsed);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
+  // İlk veriyi getInitialOgrenciler() zaten sağlıyor, burada tekrar cache callback yapmıyoruz.
+  // Böylece mount sırasında "cache → boş → demo" üçlü titremesi (flicker) önlenir.
 
   return onSnapshot(userCol(OGRENCILER_COL), (snap) => {
     const list: Ogrenci[] = [];
@@ -126,9 +118,14 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
       ? demoOgrenciler.slice(0, 4)
       : list;
 
+    // Değişiklik yoksa callback'i tetikleme (gereksiz re-render engellenir)
+    const json = JSON.stringify(finalResult);
+    if (json === _lastOgrencilerJson) return;
+    _lastOgrencilerJson = json;
+
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), JSON.stringify(finalResult));
+        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
       } catch {
         // ignore
       }
@@ -137,17 +134,7 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     callback(finalResult);
   }, (err) => {
     console.warn("Firestore subscription error:", err);
-    if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
-        if (cached) {
-          callback(JSON.parse(cached));
-          return;
-        }
-      } catch {
-        // ignore
-      }
-    }
+    // Hata durumunda zaten getInitialOgrenciler() ile ilk veri yüklü, ekstra işlem gerekmez
   });
 }
 
@@ -221,28 +208,20 @@ export async function fetchSinavlar(): Promise<SinavData[]> {
   }
 }
 
-export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem(userCacheKey("egitim_sinavlar_cache"));
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) {
-          callback(parsed);
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
+let _lastSinavlarJson = "";
 
+export function subscribeSinavlar(callback: (sinavlar: SinavData[]) => void) {
   return onSnapshot(userCol(SINAVLAR_COL), (snap) => {
     const list: SinavData[] = [];
     snap.forEach((d) => list.push(d.data() as SinavData));
     
+    const json = JSON.stringify(list);
+    if (json === _lastSinavlarJson) return;
+    _lastSinavlarJson = json;
+
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(userCacheKey("egitim_sinavlar_cache"), JSON.stringify(list));
+        localStorage.setItem(userCacheKey("egitim_sinavlar_cache"), json);
       } catch {
         // ignore
       }
@@ -774,19 +753,9 @@ export interface PersonelData {
   brans: string;
 }
 
-export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
-  const cacheKey = userCacheKey("egitim_personeller_cache");
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        callback(JSON.parse(cached));
-      }
-    } catch {
-      // ignore
-    }
-  }
+let _lastPersonellerJson = "";
 
+export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
   return onSnapshot(userCol(PERSONEL_COL), (snap) => {
     const list: PersonelData[] = [];
     snap.forEach((d) => {
@@ -794,9 +763,13 @@ export function subscribePersoneller(callback: (list: PersonelData[]) => void) {
     });
     list.sort((a, b) => a.adSoyad.localeCompare(b.adSoyad, "tr"));
 
+    const json = JSON.stringify(list);
+    if (json === _lastPersonellerJson) return;
+    _lastPersonellerJson = json;
+
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(cacheKey, JSON.stringify(list));
+        localStorage.setItem(userCacheKey("egitim_personeller_cache"), json);
       } catch {
         // ignore
       }
