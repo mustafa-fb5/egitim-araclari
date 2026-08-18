@@ -60,13 +60,13 @@ export function getInitialOgrenciler(): Ogrenci[] {
       const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
     }
   }
-  return [];
+  return demoOgrenciler.slice(0, 4);
 }
 
 export function getInitialPersoneller(): PersonelData[] {
@@ -121,15 +121,20 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     snap.forEach((d) => list.push(d.data() as Ogrenci));
     list.sort((a, b) => Number(a.numara) - Number(b.numara));
     
+    // Eğer misafir kullanıcıysa ve bulutta henüz öğrenci yoksa 4 örnek öğrenciyi göster
+    const finalResult = (getActiveUserUid() === "guest" && list.length === 0)
+      ? demoOgrenciler.slice(0, 4)
+      : list;
+
     if (typeof window !== "undefined") {
       try {
-        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), JSON.stringify(list));
+        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), JSON.stringify(finalResult));
       } catch {
         // ignore
       }
     }
     
-    callback(list);
+    callback(finalResult);
   }, (err) => {
     console.warn("Firestore subscription error:", err);
     if (typeof window !== "undefined") {

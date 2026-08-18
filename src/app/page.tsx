@@ -116,7 +116,7 @@ const tools = [
 ];
 
 export default function HomePage() {
-  const { isPro, openProModal } = useAuth();
+  const { user, isPro, openProModal } = useAuth();
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [personeller, setPersoneller] = useState<Personel[]>(getInitialPersoneller);
   const [sinavSayisi, setSinavSayisi] = useState(0);
@@ -152,24 +152,33 @@ export default function HomePage() {
     };
   }, []);
 
+  // Giriş yapmamış kullanıcılar için rastgele 4 demo öğrenci, giriş yapmışlar için kendi öğrencileri
+  const gorunenOgrenciler = useMemo(() => {
+    if (!user) {
+      // Rastgele 4 demo öğrenci seç
+      return [...demoOgrenciler].sort(() => 0.5 - Math.random()).slice(0, 4);
+    }
+    return ogrenciler;
+  }, [user, ogrenciler]);
+
   // Aktif Sınıf/Şube Sayısı
   const aktifSinifSayisi = useMemo(() => {
     const set = new Set<string>();
-    ogrenciler.forEach((o) => {
+    gorunenOgrenciler.forEach((o) => {
       if (o.sinif && o.sube) {
         set.add(`${o.sinif}-${o.sube}`);
       }
     });
     return set.size;
-  }, [ogrenciler]);
+  }, [gorunenOgrenciler]);
 
   // Canlı İstatistikler
   const quickStats = [
     {
       label: "Toplam Öğrenci",
-      value: `${ogrenciler.length}`,
+      value: `${gorunenOgrenciler.length}`,
       icon: "👨‍🎓",
-      detail: `${aktifSinifSayisi} Aktif Şube`,
+      detail: !user ? "Örnek Veri (4 Öğrenci)" : `${aktifSinifSayisi} Aktif Şube`,
       color: "text-indigo-600 dark:text-indigo-400",
       bg: "bg-indigo-500/15",
     },

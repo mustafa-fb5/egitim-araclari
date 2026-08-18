@@ -13,11 +13,12 @@ export default function SinifListesiPage() {
   const [aramaMetni, setAramaMetni] = useState("");
   const [gorunum, setGorunum] = useState<"tablo" | "kart">("tablo");
   const [yukleniyor, setYukleniyor] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const { isPro, openProModal } = useAuth();
 
-  // Mobil ekranlarda otomatik olarak Kart görünümüne geç
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       setGorunum("kart");
     }
