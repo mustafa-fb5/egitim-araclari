@@ -35,8 +35,12 @@ export default function ProModal() {
             {proModalFeature ? `${proModalFeature}` : "Bu Özellik Pro Üyelere Özeldir"}
           </h3>
           <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 max-w-sm mx-auto">
-            Sınırsız öğrenci ekleme ve tüm karne / analiz modüllerine PRO üyelik ile erişin.
+            Ücretsiz sürümde <strong className="text-amber-700 dark:text-amber-300 font-black">en fazla 10 öğrenci</strong> ekleyebilirsiniz. Sınırsız öğrenci ve tüm gelişmiş analiz/karne modülleri için PRO üye olun.
           </p>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-xs font-bold mt-1">
+            <span>ℹ️</span>
+            <span>Ücretsiz Plan: <strong>Maksimum 10 Öğrenci</strong></span>
+          </div>
         </div>
 
         {/* FİYATLANDIRMA KARTLARI (Yüksek Kontrastlı & Net Okunabilir) */}

@@ -28,7 +28,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full bg-[var(--background)] relative">
         <AuthProvider>
-          <FloatingBubbles count={28} />
+          <FloatingBubbles />
           <div className="flex min-h-screen relative z-10">
             <Sidebar />
             <div className="flex-1 lg:ml-72 flex flex-col min-h-screen">

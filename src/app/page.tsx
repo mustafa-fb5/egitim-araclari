@@ -252,6 +252,7 @@ export default function HomePage() {
             <Link
               key={tool.href}
               href={tool.href}
+              prefetch={true}
               className={`group glass-card rounded-2xl p-5 card-hover ${tool.span}`}
             >
               <div className="flex items-start gap-4">

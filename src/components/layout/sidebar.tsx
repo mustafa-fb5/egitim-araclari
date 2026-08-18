@@ -71,10 +71,10 @@ export default function Sidebar() {
       <aside
         className={`fixed top-0 left-0 h-full w-72 z-40 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
-        } liquid-glass`}
+        } bg-[var(--sidebar)] border-r border-[var(--border)] shadow-sm`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-white/20 dark:border-indigo-500/20">
+        <div className="p-6 border-b border-[var(--border)]">
           <Link href="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">
               E
@@ -119,6 +119,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={true}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border ${
                   isActive
@@ -144,6 +145,7 @@ export default function Sidebar() {
             <div className="pt-2">
               <Link
                 href="/admin"
+                prefetch={true}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all duration-200 border ${
                   pathname === "/admin"
@@ -162,8 +164,8 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-white/20 dark:border-indigo-500/20">
-          <div className="glass rounded-xl p-3 text-center border border-white/40 dark:border-white/10 shadow-sm">
+        <div className="p-4 border-t border-[var(--border)]">
+          <div className="glass-card rounded-xl p-3 text-center border border-[var(--border)] shadow-sm">
             <p className="text-xs text-[var(--muted-foreground)] font-medium">
               📚 Eğitim Araçları v1.0
             </p>
