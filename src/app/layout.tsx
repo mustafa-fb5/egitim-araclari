@@ -8,9 +8,18 @@ import ProModal from "@/components/auth/pro-modal";
 import RouteGuard from "@/components/layout/route-guard";
 
 export const metadata: Metadata = {
-  title: "Eğitim Araçları - Öğretmen Paneli",
-  description: "Öğretmenler için kapsamlı eğitim araçları platformu. Ortalama hesaplama, yoklama, sınav analiz, karne ve daha fazlası.",
-  keywords: "eğitim, öğretmen, ortalama hesaplama, yoklama, sınav analiz, karne, ders programı",
+  title: "Eğitim Araçları - Öğretmen & Yönetici Paneli",
+  description: "Öğretmenler ve yöneticiler için kapsamlı eğitim araçları platformu. Ortalama hesaplama, yoklama, sınav analiz, karne, aidat ve daha fazlası.",
+  keywords: "eğitim, öğretmen, ortalama hesaplama, yoklama, sınav analiz, karne, ders programı, aidat",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
@@ -21,6 +30,9 @@ export default function RootLayout({
   return (
     <html lang="tr" className="h-full antialiased" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
           rel="stylesheet"

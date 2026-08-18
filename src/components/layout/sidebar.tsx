@@ -74,14 +74,18 @@ export default function Sidebar() {
         } bg-[var(--sidebar)] border-r border-[var(--border)] shadow-sm`}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-[var(--border)]">
+        <div className="p-5 border-b border-[var(--border)]">
           <Link href="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
-            <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-lg group-hover:scale-105 transition-transform">
-              E
+            <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-md group-hover:scale-105 transition-transform bg-white/5 p-1 border border-[var(--border)] flex items-center justify-center shrink-0">
+              <img
+                src="/logo.png"
+                alt="Eğitim Araçları Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <div>
-              <h1 className="text-lg font-bold gradient-text">Eğitim Araçları</h1>
-              <p className="text-xs text-[var(--muted-foreground)]">Öğretmen Paneli</p>
+            <div className="min-w-0">
+              <h1 className="text-base font-extrabold gradient-text truncate">Eğitim Araçları</h1>
+              <p className="text-[11px] font-semibold text-[var(--muted-foreground)] truncate">Öğretmen & Yönetici Paneli</p>
             </div>
           </Link>
         </div>
