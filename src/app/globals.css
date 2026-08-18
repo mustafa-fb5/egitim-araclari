@@ -133,6 +133,15 @@ body {
     inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
+/* Sidebar nav link colors */
+.sidebar-nav-link {
+  color: #000000;
+}
+
+.dark .sidebar-nav-link {
+  color: #ffffff;
+}
+
 .glass-card {
   background: linear-gradient(
     135deg,

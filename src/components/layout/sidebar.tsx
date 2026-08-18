@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+
+// Ücretsiz erişilebilen sayfalar
+export const freeRoutes = ["/", "/sinif-listesi", "/yoklama", "/personel-listesi"];
 
 export const defaultMenuItems = [
   { href: "/", label: "Ana Sayfa", icon: "🏠" },
@@ -23,6 +27,13 @@ export const defaultMenuItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { isPro, isAdmin, openProModal } = useAuth();
+
+  const handleProClick = (e: React.MouseEvent, label: string) => {
+    e.preventDefault();
+    openProModal(label);
+    setIsOpen(false);
+  };
 
   return (
     <>
@@ -79,6 +90,31 @@ export default function Sidebar() {
         <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
           {defaultMenuItems.map((item) => {
             const isActive = pathname === item.href;
+            const requiresPro = !freeRoutes.includes(item.href);
+            const isLocked = requiresPro && !isPro;
+
+            if (isLocked) {
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={(e) => handleProClick(e, item.label)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-55 hover:opacity-85 hover:bg-amber-500/10 hover:border-amber-500/25 cursor-pointer backdrop-blur-sm sidebar-nav-link text-left"
+                >
+                  <span className="text-lg grayscale group-hover:grayscale-0 transition-all">
+                    {item.icon}
+                  </span>
+                  <span className="truncate font-bold sidebar-nav-link">
+                    {item.label}
+                  </span>
+                  <span className="ml-auto px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-sm">
+                    <span>🔒</span>
+                    <span>PRO</span>
+                  </span>
+                </button>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
@@ -87,19 +123,42 @@ export default function Sidebar() {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all duration-200 group border ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"
-                    : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 text-slate-950 dark:text-slate-950 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 hover:text-indigo-900 dark:hover:text-indigo-900 backdrop-blur-sm"
+                    : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 backdrop-blur-sm sidebar-nav-link"
                 }`}
               >
                 <span className={`text-lg transition-transform duration-200 ${!isActive ? "group-hover:scale-110" : ""}`}>
                   {item.icon}
                 </span>
-                <span className="truncate text-slate-950 dark:text-slate-950">{item.label}</span>
+                <span className={`truncate font-bold ${isActive ? "text-white" : "sidebar-nav-link"}`}>
+                  {item.label}
+                </span>
                 {isActive && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-sm" />
                 )}
               </Link>
             );
           })}
+
+          {/* Sadece Yönetici Giriş Yapmışsa Görünür */}
+          {isAdmin && (
+            <div className="pt-2">
+              <Link
+                href="/admin"
+                onClick={() => setIsOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all duration-200 border ${
+                  pathname === "/admin"
+                    ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400 scale-[1.02]"
+                    : "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500 hover:text-white"
+                }`}
+              >
+                <span className="text-lg">👑</span>
+                <span className="truncate">Yönetici Paneli</span>
+                <span className="ml-auto text-[10px] bg-amber-500/30 text-white px-1.5 py-0.5 rounded font-black">
+                  ADMİN
+                </span>
+              </Link>
+            </div>
+          )}
         </nav>
 
         {/* Footer */}

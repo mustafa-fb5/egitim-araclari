@@ -212,6 +212,201 @@ export default function AidatTakipPage() {
     : null;
   const detayAidat = secilenOgrenciId !== null ? getOgrenciAidat(secilenOgrenciId) : null;
 
+  // Excel (.xls / .xlsx) İndirme Fonksiyonu - Tamamen Beyaz Arka Plan ve Net Görünüm
+  const excelIndir = () => {
+    let tabloHtml = "";
+    let dosyaAdi = "aidat_takip_listesi.xls";
+
+    if (gorunumModu === "detay" && detayOgrenci && detayAidat) {
+      // Tek Öğrenci Detay Raporu
+      dosyaAdi = `aidat_detay_${detayOgrenci.sinif}${detayOgrenci.sube}_${detayOgrenci.ad}_${detayOgrenci.soyad}.xls`;
+      const ist = ogrenciIstatistik(detayOgrenci.id);
+
+      tabloHtml = `
+        <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; background-color: #ffffff; color: #000000;">
+          <thead>
+            <tr>
+              <th colspan="5" style="background-color: #4f46e5; color: #ffffff; font-size: 16px; font-weight: bold; padding: 12px; text-align: center;">
+                ÖĞRENCİ AİDAT DETAY RAPORU
+              </th>
+            </tr>
+            <tr style="background-color: #f8fafc; color: #000000;">
+              <td colspan="5" style="padding: 10px; background-color: #f8fafc; color: #000000; border: 1px solid #cbd5e1;">
+                <b>Öğrenci:</b> ${detayOgrenci.ad} ${detayOgrenci.soyad} | 
+                <b>No:</b> ${detayOgrenci.numara} | 
+                <b>Sınıf/Şube:</b> ${detayOgrenci.sinif}-${detayOgrenci.sube} | 
+                <b>Aylık Aidat:</b> ${ist.aylikTutar} ₺ | 
+                <b>Toplam:</b> ${ist.toplam} ₺ | 
+                <b>Ödenen:</b> <span style="color: #16a34a; font-weight: bold;">${ist.odenen} ₺</span> | 
+                <b>Kalan Borç:</b> <span style="color: #d97706; font-weight: bold;">${ist.kalan} ₺</span>
+              </td>
+            </tr>
+            <tr style="background-color: #f1f5f9; color: #0f172a; font-weight: bold; text-align: center;">
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 50px;">#</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 150px;">Ay</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 120px;">Tutar (₺)</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 140px;">Ödeme Durumu</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 160px;">Ödenme Tarihi</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${AYLAR.map((ay, index) => {
+              const odeme = detayAidat.aylar[ay.key as AyKey];
+              const durum = odeme?.durum;
+              let durumBg = "#ffffff";
+              let durumColor = "#000000";
+              let durumMetin = "Bekliyor";
+
+              if (durum === "odendi") {
+                durumBg = "#dcfce7";
+                durumColor = "#15803d";
+                durumMetin = "✓ Ödendi";
+              } else if (durum === "gecikti") {
+                durumBg = "#fee2e2";
+                durumColor = "#b91c1c";
+                durumMetin = "⚠ Gecikti";
+              }
+
+              return `
+                <tr style="background-color: #ffffff; color: #000000;">
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000;">${index + 1}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; font-weight: bold; background-color: #ffffff; color: #000000;">${ay.label}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: right; background-color: #ffffff; color: #000000;">${(odeme?.tutar || ist.aylikTutar).toLocaleString("tr-TR")} ₺</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; background-color: ${durumBg}; color: ${durumColor}; font-weight: bold;">${durumMetin}</td>
+                  <td style="padding: 8px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000;">${odeme?.odenmeTarihi || "-"}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      `;
+    } else {
+      // Toplu Liste (Filtrelenmiş veya Tüm Öğrenciler)
+      dosyaAdi = `aidat_takip_listesi_${secilenSinif !== "Tümü" ? secilenSinif + "-" + secilenSube : "tum_siniflar"}.xls`;
+
+      tabloHtml = `
+        <table border="1" style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; background-color: #ffffff; color: #000000;">
+          <thead>
+            <tr>
+              <th colspan="${10 + AYLAR.length}" style="background-color: #4f46e5; color: #ffffff; font-size: 16px; font-weight: bold; padding: 12px; text-align: center;">
+                AİDAT TAKİP VE ÖDEME LİSTESİ (${secilenSinif !== "Tümü" ? secilenSinif + ". Sınıf / " + secilenSube : "Tüm Sınıflar"})
+              </th>
+            </tr>
+            <tr style="background-color: #f1f5f9; color: #0f172a; font-weight: bold; text-align: center; font-size: 12px;">
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 40px;">#</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 80px;">Öğr. No</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 160px; text-align: left;">Adı Soyadı</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 80px;">Sınıf/Şube</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 90px;">Aylık (₺)</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 100px;">Toplam (₺)</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 100px;">Ödenen (₺)</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 100px;">Kalan (₺)</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 80px;">Ödenen Ay</th>
+              <th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #f1f5f9; color: #000000; width: 110px;">Genel Durum</th>
+              ${AYLAR.map((ay) => `<th style="padding: 8px; border: 1px solid #cbd5e1; background-color: #e2e8f0; color: #000000; width: 85px;">${ay.label}</th>`).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${filtrelenmisOgrenciler.map((ogr, index) => {
+              const aidat = getOgrenciAidat(ogr.id);
+              const ist = ogrenciIstatistik(ogr.id);
+              const tamOdendi = ist.odenen >= ist.toplam && ist.toplam > 0;
+              const geciktiVar = ist.geciken > 0;
+
+              let durumBg = "#ffffff";
+              let durumColor = "#000000";
+              let durumStr = "Devam Ediyor";
+
+              if (tamOdendi) {
+                durumBg = "#dcfce7";
+                durumColor = "#15803d";
+                durumStr = "Tamamlandı";
+              } else if (geciktiVar) {
+                durumBg = "#fee2e2";
+                durumColor = "#b91c1c";
+                durumStr = "Gecikmiş";
+              }
+
+              return `
+                <tr style="background-color: #ffffff; color: #000000; font-size: 12px;">
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000;">${index + 1}</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000; font-weight: bold;">${ogr.numara}</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: left; background-color: #ffffff; color: #000000; font-weight: bold;">${ogr.ad} ${ogr.soyad}</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000;">${ogr.sinif}-${ogr.sube}</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; background-color: #ffffff; color: #000000;">${ist.aylikTutar.toLocaleString("tr-TR")} ₺</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; background-color: #ffffff; color: #000000;">${ist.toplam.toLocaleString("tr-TR")} ₺</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; background-color: #ffffff; color: #16a34a; font-weight: bold;">${ist.odenen.toLocaleString("tr-TR")} ₺</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: right; background-color: #ffffff; color: #d97706; font-weight: bold;">${ist.kalan.toLocaleString("tr-TR")} ₺</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: #ffffff; color: #000000;">${ist.odenenAySayisi} / ${AYLAR.length}</td>
+                  <td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: ${durumBg}; color: ${durumColor}; font-weight: bold;">${durumStr}</td>
+                  ${AYLAR.map((ay) => {
+                    const ayOdeme = aidat.aylar[ay.key as AyKey];
+                    let ayBg = "#ffffff";
+                    let ayColor = "#64748b";
+                    let ayTxt = "Bekliyor";
+
+                    if (ayOdeme?.durum === "odendi") {
+                      ayBg = "#dcfce7";
+                      ayColor = "#15803d";
+                      ayTxt = "Ödendi";
+                    } else if (ayOdeme?.durum === "gecikti") {
+                      ayBg = "#fee2e2";
+                      ayColor = "#b91c1c";
+                      ayTxt = "Gecikti";
+                    }
+
+                    return `<td style="padding: 6px; border: 1px solid #e2e8f0; text-align: center; background-color: ${ayBg}; color: ${ayColor}; font-weight: bold;">${ayTxt}</td>`;
+                  }).join("")}
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // Tamamen beyaz ve temiz XML/HTML Excel Şablonu
+    const excelDosyaIcerigi = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>Aidat Takip</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <style>
+            body, table, td, th {
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              font-family: Calibri, Arial, sans-serif;
+            }
+          </style>
+        </head>
+        <body style="background-color: #ffffff; color: #000000;">
+          ${tabloHtml}
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob(["\ufeff" + excelDosyaIcerigi], { type: "application/vnd.ms-excel;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = dosyaAdi;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Başlık */}
@@ -223,14 +418,24 @@ export default function AidatTakipPage() {
           </p>
         </div>
 
-        {gorunumModu === "detay" && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => { setGorunumModu("liste"); setSecilenOgrenciId(null); }}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--primary)] hover:text-white transition-all"
+            onClick={excelIndir}
+            className="px-4 py-2 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
           >
-            ← Listeye Dön
+            <span>📊</span>
+            <span>Excel İndir (.xlsx)</span>
           </button>
-        )}
+
+          {gorunumModu === "detay" && (
+            <button
+              onClick={() => { setGorunumModu("liste"); setSecilenOgrenciId(null); }}
+              className="px-4 py-2 rounded-xl text-sm font-medium bg-[var(--secondary)] text-[var(--secondary-foreground)] hover:bg-[var(--primary)] hover:text-white transition-all"
+            >
+              ← Listeye Dön
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtre & Arama */}

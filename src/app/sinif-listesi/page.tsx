@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
 import { subscribeOgrenciler, saveOgrenci, deleteOgrenci as deleteOgrenciFromDb } from "@/lib/firestore-service";
+import { useAuth } from "@/lib/auth-context";
 
 export default function SinifListesiPage() {
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
@@ -12,6 +13,8 @@ export default function SinifListesiPage() {
   const [aramaMetni, setAramaMetni] = useState("");
   const [gorunum, setGorunum] = useState<"tablo" | "kart">("tablo");
   const [yukleniyor, setYukleniyor] = useState(true);
+
+  const { isPro, openProModal } = useAuth();
 
   // Firestore Realtime Subscription
   useEffect(() => {
@@ -59,6 +62,17 @@ export default function SinifListesiPage() {
       alert("Ad Soyad ve numara zorunludur!");
       return;
     }
+
+    // 10 Öğrenci Sınırı Kontrolü (Pro Olmayanlar İçin)
+    const sinifOgrenciSayisi = ogrenciler.filter(
+      (o) => o.sinif === yeniOgrenci.sinif && o.sube === yeniOgrenci.sube
+    ).length;
+
+    if (!isPro && sinifOgrenciSayisi >= 10) {
+      openProModal(`${yeniOgrenci.sinif}-${yeniOgrenci.sube} Sınıfı Öğrenci Sınırı (10/10)`);
+      return;
+    }
+
     const { ad, soyad } = parseAdSoyad(yeniAdSoyad);
     const yeniId = ogrenciler.length > 0 ? Math.max(...ogrenciler.map((o) => o.id), 0) + 1 : 1;
     const olusturulan: Ogrenci = {

@@ -60,12 +60,6 @@ export default function PdfKarnePage() {
   const [secilenSube, setSecilenSube] = usePersistentState("egitim_pdf_karne_sube", "A");
   const [secilenOgrenciId, setSecilenOgrenciId] = usePersistentState<string>("egitim_pdf_karne_ogrenci_id", "1");
 
-  // Genel Okul / Belge Bilgileri
-  const [okulBilgi, setOkulBilgi] = usePersistentState("egitim_pdf_karne_okul_bilgi", {
-    okulAdi: "Atatürk Ortaokulu",
-    donem: "2026-2027 Eğitim Öğretim Yılı / 2. Dönem",
-  });
-
   const [manuelSinavDersleri, setManuelSinavDersleri] = useState<SinavDersAnalizi[]>([]);
 
   // Firestore Realtime Senkronizasyonu
@@ -551,7 +545,7 @@ export default function PdfKarnePage() {
 
       {/* Sınıf, Şube ve Öğrenci Seçim Paneli */}
       <div className="glass-card rounded-2xl p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+        <div className={`grid grid-cols-1 sm:grid-cols-2 ${karneTuru === "sinav_analiz" ? "md:grid-cols-4" : "md:grid-cols-3"} gap-4 items-end`}>
           <div>
             <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Sınıf</label>
             <select
@@ -580,7 +574,7 @@ export default function PdfKarnePage() {
             </select>
           </div>
 
-          {karneTuru === "sinav_analiz" ? (
+          {karneTuru === "sinav_analiz" && (
             <div>
               <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">
                 Çekilecek Sınav
@@ -600,16 +594,6 @@ export default function PdfKarnePage() {
                   ))
                 )}
               </select>
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Dönem Bilgisi</label>
-              <input
-                type="text"
-                value={okulBilgi.donem}
-                onChange={(e) => setOkulBilgi({ ...okulBilgi, donem: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
             </div>
           )}
 
