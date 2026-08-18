@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 
 // Ücretsiz erişilebilen sayfalar
-export const freeRoutes = ["/", "/sinif-listesi", "/yoklama", "/personel-listesi"];
+export const freeRoutes = ["/", "/sinif-listesi", "/yoklama", "/personel-listesi", "/iletisim"];
 
 export const defaultMenuItems = [
   { href: "/", label: "Ana Sayfa", icon: "🏠" },
@@ -27,6 +27,7 @@ export const defaultMenuItems = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [iletisimAcik, setIletisimAcik] = useState(false);
   const { isPro, isAdmin, openProModal } = useAuth();
 
   const handleProClick = (e: React.MouseEvent, label: string) => {
@@ -168,17 +169,102 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[var(--border)]">
-          <div className="glass-card rounded-xl p-3 text-center border border-[var(--border)] shadow-sm">
-            <p className="text-xs text-[var(--muted-foreground)] font-medium">
+        <div className="p-3 border-t border-[var(--border)] space-y-2">
+          {/* İletişim Butonu */}
+          <button
+            type="button"
+            onClick={() => setIletisimAcik(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/20 transition-all hover:scale-[1.01] cursor-pointer shadow-sm"
+          >
+            <span className="text-sm">📞</span>
+            <span>İletişim & Destek</span>
+          </button>
+
+          <div className="glass-card rounded-xl p-2.5 text-center border border-[var(--border)] shadow-sm">
+            <p className="text-[11px] text-[var(--muted-foreground)] font-semibold">
               📚 Eğitim Araçları v1.0
             </p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-1">
+            <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">
               2026-2027 Eğitim Yılı
             </p>
           </div>
         </div>
       </aside>
+
+      {/* İletişim Modal Pop-up */}
+      {iletisimAcik && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in no-print">
+          <div className="relative glass-card rounded-3xl w-full max-w-md p-6 space-y-5 shadow-2xl border-2 border-indigo-500/30 bg-[var(--background)]">
+            {/* Kapat Butonu */}
+            <button
+              onClick={() => setIletisimAcik(false)}
+              className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-[var(--secondary)] flex items-center justify-center text-slate-700 dark:text-slate-200 hover:text-red-500 transition-colors font-black text-lg cursor-pointer border border-[var(--border)]"
+            >
+              ×
+            </button>
+
+            {/* Başlık */}
+            <div className="text-center space-y-1.5 pt-1">
+              <div className="w-12 h-12 rounded-2xl gradient-bg flex items-center justify-center text-2xl mx-auto shadow-lg shadow-indigo-500/30">
+                💬
+              </div>
+              <h3 className="text-xl font-black text-[var(--foreground)]">
+                İletişim & Destek
+              </h3>
+              <p className="text-xs font-semibold text-[var(--muted-foreground)]">
+                Soru, öneri ve PRO üyelik işlemleri için bize ulaşabilirsiniz.
+              </p>
+            </div>
+
+            {/* İletişim Kanalları */}
+            <div className="space-y-3 pt-1">
+              {/* WhatsApp */}
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-xl shadow-md shrink-0">
+                  📱
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                    WhatsApp Hattı
+                  </p>
+                  <p className="text-sm font-black text-[var(--foreground)] truncate">
+                    dmrbs53
+                  </p>
+                </div>
+              </div>
+
+              {/* E-Posta */}
+              <a
+                href="mailto:mustafademirbas0053@gmail.com"
+                className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center gap-3.5 hover:bg-indigo-500/15 transition-colors group block"
+              >
+                <div className="flex items-center gap-3.5 w-full">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0 group-hover:scale-105 transition-transform">
+                    ✉️
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      E-Posta Adresi
+                    </p>
+                    <p className="text-xs sm:text-sm font-black text-[var(--foreground)] truncate select-all">
+                      mustafademirbas0053@gmail.com
+                    </p>
+                  </div>
+                </div>
+              </a>
+            </div>
+
+            {/* Kapat Butonu */}
+            <button
+              type="button"
+              onClick={() => setIletisimAcik(false)}
+              className="w-full py-2.5 rounded-xl font-bold text-xs bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--accent)] hover:text-white transition-all cursor-pointer border border-[var(--border)]"
+            >
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
