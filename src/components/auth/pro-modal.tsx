@@ -43,7 +43,7 @@ export default function ProModal() {
           </div>
         </div>
 
-        {/* FİYATLANDIRMA KARTLARI (Yüksek Kontrastlı & Net Okunabilir) */}
+        {/* FİYATLANDIRMA KARTLARI (Masaüstü ve Telefinda Birebir Net Görünüm) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
           {/* Aylık Paket */}
           <div className="relative p-4 rounded-2xl bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 shadow-md space-y-3">
@@ -80,7 +80,7 @@ export default function ProModal() {
           </div>
 
           {/* Yıllık Paket (Avantajlı) */}
-          <div className="relative p-4 rounded-2xl bg-amber-50/80 dark:bg-slate-900 border-2 border-amber-500 dark:border-amber-400 shadow-lg shadow-amber-500/15 space-y-3">
+          <div className="relative p-4 rounded-2xl bg-amber-50/90 dark:bg-slate-900 border-2 border-amber-500 dark:border-amber-400 shadow-lg shadow-amber-500/15 space-y-3">
             <div className="absolute -top-3 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full shadow-md">
               🔥 200 ₺ İndirimli
             </div>
@@ -118,35 +118,35 @@ export default function ProModal() {
           </div>
         </div>
 
-        {/* Dahil Olan Özellikler (Yüksek Kontrastlı) */}
+        {/* Dahil Olan Özellikler (Yüksek Kontrastlı & 2 Sütun Düzeni) */}
         <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700 text-xs space-y-2">
           <p className="font-black text-slate-950 dark:text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
             <span>⭐</span>
             <span>PRO Üyelik İle Açılan Özellikler:</span>
           </p>
-          <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-            <span className="flex items-center gap-1.5">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Sınırsız Öğrenci
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> PDF Karne & Rapor
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Sınav & Net Analizi
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Ortalama Hesaplama
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Aidat Takip (Excel)
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Ders & Nöbet Çizelgesi
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Veli SMS / WhatsApp
             </span>
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 truncate">
               <strong className="text-emerald-600 dark:text-emerald-400">✓</strong> Başarı Grafikleri
             </span>
           </div>
