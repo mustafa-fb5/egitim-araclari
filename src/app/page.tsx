@@ -152,11 +152,10 @@ export default function HomePage() {
     };
   }, []);
 
-  // Giriş yapmamış kullanıcılar için rastgele 4 demo öğrenci, giriş yapmışlar için kendi öğrencileri
+  // Giriş yapmamış kullanıcılar için sabit 4 demo öğrenci, giriş yapmışlar için kendi öğrencileri
   const gorunenOgrenciler = useMemo(() => {
     if (!user) {
-      // Rastgele 4 demo öğrenci seç
-      return [...demoOgrenciler].sort(() => 0.5 - Math.random()).slice(0, 4);
+      return demoOgrenciler.slice(0, 4);
     }
     return ogrenciler;
   }, [user, ogrenciler]);
