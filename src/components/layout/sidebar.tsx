@@ -9,6 +9,7 @@ export const defaultMenuItems = [
   { href: "/sinif-listesi", label: "Sınıf Listesi", icon: "📋" },
   { href: "/yoklama", label: "Yoklama", icon: "✅" },
   { href: "/ortalama-hesaplama", label: "Ortalama Hesaplama", icon: "📊" },
+  { href: "/testler", label: "Testler", icon: "📝" },
   { href: "/sinav-analiz", label: "Sınav Analiz", icon: "📈" },
   { href: "/pdf-karne", label: "PDF Karne", icon: "📄" },
   { href: "/veli-bilgilendirme", label: "Veli Bilgilendirme", icon: "💬" },
@@ -16,6 +17,7 @@ export const defaultMenuItems = [
   { href: "/nobet-cizelgesi", label: "Nöbet Çizelgesi", icon: "🔄" },
   { href: "/ogrenci-basari-grafikleri", label: "Başarı Grafikleri", icon: "📉" },
   { href: "/aidat-takip", label: "Aidat Takip", icon: "💰" },
+  { href: "/personel-listesi", label: "Personel Listesi", icon: "👥" },
 ];
 
 export default function Sidebar() {

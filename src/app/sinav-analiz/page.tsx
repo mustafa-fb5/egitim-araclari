@@ -282,6 +282,8 @@ export default function SinavAnalizPage() {
 
     const ortalamaPuan = puanlar.length > 0 ? puanlar.reduce((a, b) => a + b, 0) / puanlar.length : 0;
     const enYuksekPuan = puanlar.length > 0 ? Math.max(...puanlar) : 0;
+    const enDusukPuan = puanlar.length > 0 ? Math.min(...puanlar) : 0;
+    const ortalamaNet = netler.length > 0 ? netler.reduce((a, b) => a + b, 0) / netler.length : 0;
     return {
       ortalamaPuan: parseFloat(ortalamaPuan.toFixed(2)),
       enYuksekPuan: parseFloat(enYuksekPuan.toFixed(2)),
@@ -383,17 +385,6 @@ export default function SinavAnalizPage() {
         fillColor: [250, 252, 255],
       },
     });
-
-    const docWithAutoTable = doc as unknown as { lastAutoTable?: { finalY?: number } };
-    const finalY = docWithAutoTable.lastAutoTable?.finalY || 150;
-
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text("Sinif Rehber Ogretmeni", 50, finalY + 25, { align: "center" });
-    doc.line(25, finalY + 20, 75, finalY + 20);
-
-    doc.text("Okul Muduru", 240, finalY + 25, { align: "center" });
-    doc.line(215, finalY + 20, 265, finalY + 20);
 
     doc.save(`sinav_gecmisi_${ogr.ad}_${ogr.soyad}.pdf`);
   };

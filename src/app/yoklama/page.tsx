@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { subscribeOgrenciler, fetchYoklamalar, saveYoklamaGunu } from "@/lib/firestore-service";
+import { subscribeOgrenciler, subscribeYoklamalar, saveYoklamaGunu } from "@/lib/firestore-service";
 
 type YoklamaDurum = "var" | "yok" | "izinli";
 
@@ -13,36 +13,34 @@ export default function YoklamaPage() {
   const [tarih, setTarih] = useState(new Date().toISOString().split("T")[0]);
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
   const [yoklamalar, setYoklamalar] = useState<Record<number, YoklamaDurum>>({});
-  const [kayitliGunler, setKayitliGunler] = useState<Record<string, Record<number, YoklamaDurum>>>({});
+  const [kayitliGunler, setKayitliGunler] = useState<Record<string, Record<number, string>>>({});
 
-  // Firestore'dan öğrencileri ve kayıtlı yoklamaları al
+  // Firestore Gerçek Zamanlı (Realtime) Abonelik
   useEffect(() => {
-    const unsub = subscribeOgrenciler((data) => setOgrenciler(data));
-    fetchYoklamalar().then((data) => {
-      setKayitliGunler(data as Record<string, Record<number, YoklamaDurum>>);
+    const unsubOgrenciler = subscribeOgrenciler((data) => setOgrenciler(data));
+    const unsubYoklamalar = subscribeYoklamalar((data) => {
+      setKayitliGunler(data);
     });
-    return () => unsub();
+    return () => {
+      unsubOgrenciler();
+      unsubYoklamalar();
+    };
   }, []);
 
-  // Tarih veya sınıf değiştiğinde var olan yoklamayı getir
+  // Tarih, kayıtlar veya öğrenciler güncellendiğinde yoklamaları senkronize et
   useEffect(() => {
-    if (secilenSinif === "Tümü" || secilenSube === "Tümü") {
-      const birlesik: Record<number, YoklamaDurum> = {};
-      Object.entries(kayitliGunler).forEach(([key, kayitlar]) => {
-        if (key.endsWith(`-${tarih}`)) {
-          Object.assign(birlesik, kayitlar);
-        }
-      });
-      setYoklamalar(birlesik);
-    } else {
-      const key = `${secilenSinif}${secilenSube}-${tarih}`;
-      if (kayitliGunler[key]) {
-        setYoklamalar(kayitliGunler[key]);
-      } else {
-        setYoklamalar({});
+    const birlesik: Record<number, YoklamaDurum> = {};
+    ogrenciler.forEach((o) => {
+      const key = `${o.sinif}${o.sube}-${tarih}`;
+      const durum = kayitliGunler[key]?.[o.id];
+      if (durum && (durum === "var" || durum === "yok" || durum === "izinli")) {
+        birlesik[o.id] = durum as YoklamaDurum;
       }
-    }
-  }, [secilenSinif, secilenSube, tarih, kayitliGunler]);
+    });
+    setYoklamalar(birlesik);
+  }, [tarih, kayitliGunler, ogrenciler]);
+
+  const [kayitDurumu, setKayitDurumu] = useState<"hazir" | "kaydediliyor" | "kaydedildi">("hazir");
 
   const filtrelenmisOgrenciler = useMemo(() => {
     return ogrenciler.filter((o) => {
@@ -52,38 +50,77 @@ export default function YoklamaPage() {
     });
   }, [ogrenciler, secilenSinif, secilenSube]);
 
-  const durumDegistir = (ogrenciId: number, durum: YoklamaDurum) => {
-    setYoklamalar((prev) => ({ ...prev, [ogrenciId]: durum }));
+  const durumDegistir = async (ogrenciId: number, durum: YoklamaDurum) => {
+    const ayniDurumMu = yoklamalar[ogrenciId] === durum;
+
+    setYoklamalar((prev) => {
+      const kopya = { ...prev };
+      if (ayniDurumMu) {
+        delete kopya[ogrenciId];
+      } else {
+        kopya[ogrenciId] = durum;
+      }
+      return kopya;
+    });
+    setKayitDurumu("kaydediliyor");
+
+    const ogr = ogrenciler.find((o) => o.id === ogrenciId);
+    if (ogr) {
+      const key = `${ogr.sinif}${ogr.sube}-${tarih}`;
+      const guncelKayitlar: Record<number, string> = { ...(kayitliGunler[key] || {}) };
+      if (ayniDurumMu) {
+        delete guncelKayitlar[ogrenciId];
+      } else {
+        guncelKayitlar[ogrenciId] = durum;
+      }
+      setKayitliGunler((prev) => ({ ...prev, [key]: guncelKayitlar }));
+      try {
+        await saveYoklamaGunu(key, guncelKayitlar);
+        setKayitDurumu("kaydedildi");
+      } catch (err) {
+        console.error("Otomatik kaydetme hatası:", err);
+      }
+    }
   };
 
-  const tumunuIsaretle = (durum: YoklamaDurum) => {
+  const tumunuIsaretle = async (durum: YoklamaDurum) => {
+    const hepsiAyniMi = filtrelenmisOgrenciler.length > 0 && filtrelenmisOgrenciler.every((o) => yoklamalar[o.id] === durum);
+
     const yeni: Record<number, YoklamaDurum> = { ...yoklamalar };
     filtrelenmisOgrenciler.forEach((o) => {
-      yeni[o.id] = durum;
+      if (hepsiAyniMi) {
+        delete yeni[o.id];
+      } else {
+        yeni[o.id] = durum;
+      }
     });
     setYoklamalar(yeni);
-  };
+    setKayitDurumu("kaydediliyor");
 
-  const kaydet = async () => {
-    const sinifGruplari: Record<string, Record<number, YoklamaDurum>> = {};
-    
+    const sinifGruplari: Record<string, Record<number, string>> = {};
     filtrelenmisOgrenciler.forEach((o) => {
       const key = `${o.sinif}${o.sube}-${tarih}`;
       if (!sinifGruplari[key]) {
         sinifGruplari[key] = { ...(kayitliGunler[key] || {}) };
       }
-      if (yoklamalar[o.id]) {
-        sinifGruplari[key][o.id] = yoklamalar[o.id];
+      if (hepsiAyniMi) {
+        delete sinifGruplari[key][o.id];
+      } else {
+        sinifGruplari[key][o.id] = durum;
       }
     });
 
     const guncelKayitliGunler = { ...kayitliGunler };
-    for (const [key, kayitlar] of Object.entries(sinifGruplari)) {
-      await saveYoklamaGunu(key, kayitlar);
-      guncelKayitliGunler[key] = kayitlar;
+    try {
+      for (const [key, kayitlar] of Object.entries(sinifGruplari)) {
+        await saveYoklamaGunu(key, kayitlar);
+        guncelKayitliGunler[key] = kayitlar;
+      }
+      setKayitliGunler(guncelKayitliGunler);
+      setKayitDurumu("kaydedildi");
+    } catch (err) {
+      console.error("Toplu kaydetme hatası:", err);
     }
-    setKayitliGunler(guncelKayitliGunler);
-    alert("Yoklama Firebase'e kaydedildi! ✅");
   };
 
   const durumRenk = (durum?: YoklamaDurum) => {
@@ -111,7 +148,7 @@ export default function YoklamaPage() {
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Filtreler */}
       <div className="glass-card rounded-2xl p-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div>
             <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Sınıf Filtresi</label>
             <select
@@ -147,13 +184,25 @@ export default function YoklamaPage() {
               className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             />
           </div>
-          <div className="flex items-end gap-2">
-            <button onClick={() => tumunuIsaretle("var")} className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm">
-              Tümü Var
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => tumunuIsaretle("var")} 
+              className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm"
+              title="Görüntülenen tüm öğrencileri Var olarak işaretler ve kaydeder"
+            >
+              ✅ Tümü Var
             </button>
-            <button onClick={kaydet} className="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-[var(--primary)] text-white hover:opacity-90 transition-all shadow-md">
-              💾 Kaydet
-            </button>
+            <div className="flex items-center justify-center px-3 py-2 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-xs text-[var(--muted-foreground)] whitespace-nowrap">
+              {kayitDurumu === "kaydediliyor" ? (
+                <span className="flex items-center gap-1.5 text-amber-500 font-medium animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> Kaydediliyor...
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-emerald-600 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Otomatik Kayıt
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

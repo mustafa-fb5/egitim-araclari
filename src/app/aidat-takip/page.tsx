@@ -3,7 +3,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { demoOgrenciler, sinifNumaralari, subeler, type Ogrenci } from "@/lib/data";
 import { usePersistentState } from "@/lib/use-persistent-state";
-import { subscribeOgrenciler } from "@/lib/firestore-service";
+import { 
+  subscribeOgrenciler, 
+  subscribeAidatKayitlari, 
+  saveAidatKaydi, 
+  subscribeGlobalAidat, 
+  saveGlobalAidat,
+  type OgrenciAidatData,
+  type AyOdemeData
+} from "@/lib/firestore-service";
 
 const AYLAR = [
   { key: "eylul", label: "Eylül" },
@@ -68,11 +76,24 @@ export default function AidatTakipPage() {
     {}
   );
 
-  // Firestore öğrenci listesi senkronizasyonu
+  // Firestore senkronizasyonu (Öğrenciler, Aidat Kayıtları ve Global Ayarlar)
   useEffect(() => {
-    const unsub = subscribeOgrenciler((data) => setOgrenciler(data));
-    return () => unsub();
-  }, []);
+    const unsubOgrenciler = subscribeOgrenciler((data) => setOgrenciler(data));
+    const unsubAidatlar = subscribeAidatKayitlari((remoteData) => {
+      if (remoteData && Object.keys(remoteData).length > 0) {
+        setAidatKayitlari((prev) => ({ ...prev, ...(remoteData as unknown as Record<string, OgrenciAidat>) }));
+      }
+    });
+    const unsubGlobal = subscribeGlobalAidat((val) => {
+      if (val && val > 0) setGlobalAylikAidat(val);
+    });
+
+    return () => {
+      unsubOgrenciler();
+      unsubAidatlar();
+      unsubGlobal();
+    };
+  }, [setAidatKayitlari, setGlobalAylikAidat]);
 
   // Öğrenci için aidat kaydı getir (yoksa oluştur)
   const getOgrenciAidat = (ogrenciId: number): OgrenciAidat => {
@@ -86,12 +107,13 @@ export default function AidatTakipPage() {
     };
   };
 
-  // Aidat kaydını güncelle
+  // Aidat kaydını güncelle ve Firestore buluta kaydet
   const setOgrenciAidat = (ogrenciId: number, aidat: OgrenciAidat) => {
     setAidatKayitlari((prev) => ({
       ...prev,
       [String(ogrenciId)]: aidat,
     }));
+    saveAidatKaydi(ogrenciId, aidat as unknown as OgrenciAidatData).catch(console.warn);
   };
 
   // Ay ödemesi güncelle
@@ -212,14 +234,14 @@ export default function AidatTakipPage() {
       </div>
 
       {/* Filtre & Arama */}
-      <div className="glass-card rounded-2xl p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+      <div className="glass-card rounded-2xl p-4 sm:p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
           <div>
-            <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Sınıf</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Sınıf</label>
             <select
               value={secilenSinif}
               onChange={(e) => setSecilenSinif(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             >
               <option value="Tümü">Tüm Sınıflar (1-12)</option>
               {sinifNumaralari.map((s) => (
@@ -229,11 +251,11 @@ export default function AidatTakipPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Şube</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Şube</label>
             <select
               value={secilenSube}
               onChange={(e) => setSecilenSube(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             >
               <option value="Tümü">Tüm Şubeler (A-S)</option>
               {subeler.map((s) => (
@@ -243,63 +265,73 @@ export default function AidatTakipPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Arama</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Arama</label>
             <input
               type="text"
               value={aramaMetni}
               onChange={(e) => setAramaMetni(e.target.value)}
-              placeholder="Ad, soyad veya numara..."
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              placeholder="Ad, soyad veya no..."
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Aylık Aidat (₺)</label>
+            <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1.5 uppercase tracking-wide">Aylık Aidat (₺)</label>
             <input
               type="number"
               value={globalAylikAidat}
-              onChange={(e) => setGlobalAylikAidat(Number(e.target.value))}
-              className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] font-bold"
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setGlobalAylikAidat(val);
+                saveGlobalAidat(val).catch(console.warn);
+              }}
+              className="w-full px-3 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] font-bold text-sm"
               min="0"
             />
           </div>
         </div>
       </div>
 
-      {/* Genel İstatistik Kartları */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Genel İstatistik Kartları (Kompakt) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           {
             label: "Toplam Aidat",
             value: `${genelIstatistik.toplamToplam.toLocaleString("tr-TR")} ₺`,
             icon: "💰",
-            cls: "text-[var(--primary)]",
+            cls: "text-indigo-600 dark:text-indigo-400",
+            bg: "bg-indigo-500/15",
           },
           {
             label: "Toplam Ödenen",
             value: `${genelIstatistik.toplamOdenen.toLocaleString("tr-TR")} ₺`,
             icon: "✅",
             cls: "text-emerald-500",
+            bg: "bg-emerald-500/15",
           },
           {
             label: "Kalan Borç",
             value: `${genelIstatistik.toplamKalan.toLocaleString("tr-TR")} ₺`,
             icon: "⏳",
             cls: "text-amber-500",
+            bg: "bg-amber-500/15",
           },
           {
             label: "Gecikmiş Öğrenci",
             value: `${filtrelenmisOgrenciler.filter((o) => ogrenciIstatistik(o.id).geciken > 0).length} Öğrenci`,
             icon: "⚠️",
             cls: "text-red-500",
+            bg: "bg-red-500/15",
           },
         ].map((k) => (
-          <div key={k.label} className="glass-card rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">{k.icon}</span>
+          <div key={k.label} className="glass-card rounded-xl p-3 flex items-center gap-3">
+            <div className={`w-9 h-9 rounded-xl ${k.bg} flex items-center justify-center text-lg shrink-0`}>
+              {k.icon}
             </div>
-            <p className={`text-xl font-extrabold ${k.cls}`}>{k.value}</p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-1">{k.label}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold text-[var(--muted-foreground)] truncate">{k.label}</p>
+              <p className={`text-base sm:text-lg font-black truncate leading-tight mt-0.5 ${k.cls}`}>{k.value}</p>
+            </div>
           </div>
         ))}
       </div>

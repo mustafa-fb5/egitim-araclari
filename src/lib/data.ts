@@ -82,6 +82,26 @@ export const demoOgretmenler: Ogretmen[] = [
   { id: 10, ad: "Seda", soyad: "Koç", brans: "Teknoloji ve Tasarım" },
 ];
 
+export interface Personel {
+  id: number;
+  adSoyad: string;
+  telefon: string;
+  brans: string;
+}
+
+export const demoPersoneller: Personel[] = [
+  { id: 1, adSoyad: "Ahmet Öztürk", telefon: "0532 101 2030", brans: "Türkçe" },
+  { id: 2, adSoyad: "Fatma Kılıç", telefon: "0533 202 3040", brans: "Matematik" },
+  { id: 3, adSoyad: "Mehmet Yılmaz", telefon: "0534 303 4050", brans: "Fen Bilimleri" },
+  { id: 4, adSoyad: "Ayşe Demir", telefon: "0535 404 5060", brans: "Sosyal Bilgiler" },
+  { id: 5, adSoyad: "Ali Çelik", telefon: "0536 505 6070", brans: "İngilizce" },
+  { id: 6, adSoyad: "Zeynep Şahin", telefon: "0537 606 7080", brans: "Din Kültürü" },
+  { id: 7, adSoyad: "Hasan Arslan", telefon: "0538 707 8090", brans: "Müdür" },
+  { id: 8, adSoyad: "Emine Kurt", telefon: "0539 808 9000", brans: "Müdür Yardımcısı" },
+  { id: 9, adSoyad: "Murat Aydın", telefon: "0540 909 0110", brans: "Rehberlik" },
+  { id: 10, adSoyad: "Seda Koç", telefon: "0541 010 1220", brans: "Bilişim Teknolojileri" },
+];
+
 export const nobetYerleri = ["Ana Koridor", "1. Kat Koridor", "2. Kat Koridor", "Bahçe", "Kantin", "Giriş Kapısı"];
 
 // Sınav sonuçları demo verisi

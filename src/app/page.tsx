@@ -1,4 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect, useMemo } from "react";
+import { demoOgrenciler, demoPersoneller, type Ogrenci, type Personel } from "@/lib/data";
+import {
+  subscribeOgrenciler,
+  subscribePersoneller,
+  subscribeSinavlar,
+  type SinavData,
+} from "@/lib/firestore-service";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 const tools = [
   {
@@ -13,7 +25,7 @@ const tools = [
     href: "/yoklama",
     icon: "✅",
     title: "Yoklama",
-    description: "Sınıf bazlı yoklama alın, devamsızlık takibi yapın.",
+    description: "Sınıf bazlı yoklama alın, tek tıkla durum değiştirin ve devamsızlıkları takip edin.",
     color: "from-emerald-500 to-teal-600",
     span: "",
   },
@@ -26,18 +38,26 @@ const tools = [
     span: "",
   },
   {
+    href: "/testler",
+    icon: "📝",
+    title: "Testler & Net Takibi",
+    description: "5 ana branşta konu bazlı testler oluşturun, 3Y 1D net hesaplayın ve isim analizi yapın.",
+    color: "from-indigo-600 to-violet-600",
+    span: "md:col-span-2",
+  },
+  {
     href: "/sinav-analiz",
     icon: "📈",
     title: "Sınav Analiz",
-    description: "Soru bazlı net ve LGS puan analizi hesaplayın.",
+    description: "Soru bazlı net ve LGS puan analizi hesaplayın, PDF raporlar üretin.",
     color: "from-cyan-500 to-blue-600",
-    span: "md:col-span-2",
+    span: "",
   },
   {
     href: "/pdf-karne",
     icon: "📄",
     title: "PDF Karne",
-    description: "Öğrenci karnesi oluşturun ve PDF olarak indirin.",
+    description: "Toplu veya bireysel öğrenci karneleri oluşturun ve PDF olarak indirin.",
     color: "from-rose-500 to-pink-600",
     span: "",
   },
@@ -45,7 +65,7 @@ const tools = [
     href: "/veli-bilgilendirme",
     icon: "💬",
     title: "Veli Bilgilendirme",
-    description: "SMS ve WhatsApp formatında veli mesajları oluşturun.",
+    description: "SMS ve WhatsApp formatında veli bilgilendirme mesajları oluşturun ve gönderin.",
     color: "from-amber-500 to-orange-600",
     span: "",
   },
@@ -53,7 +73,7 @@ const tools = [
     href: "/ders-programi",
     icon: "📅",
     title: "Ders Programı",
-    description: "Haftalık ders programını oluşturun ve düzenleyin.",
+    description: "Ders saatlerini ve branşları özelleştirin, haftalık ders programını oluşturup yazdırın.",
     color: "from-indigo-500 to-violet-600",
     span: "",
   },
@@ -61,7 +81,7 @@ const tools = [
     href: "/nobet-cizelgesi",
     icon: "🔄",
     title: "Nöbet Çizelgesi",
-    description: "Öğretmen nöbet programını planlayın.",
+    description: "Öğretmen listesini düzenleyin ve otomatik nöbet dağıtımı planlayın.",
     color: "from-fuchsia-500 to-purple-600",
     span: "",
   },
@@ -69,20 +89,115 @@ const tools = [
     href: "/ogrenci-basari-grafikleri",
     icon: "📉",
     title: "Başarı Grafikleri",
-    description: "Öğrenci başarı trendlerini interaktif grafiklerle takip edin.",
+    description: "Öğrenci başarı trendlerini ve puan dağılımlarını interaktif grafiklerle takip edin.",
     color: "from-purple-500 to-indigo-600",
-    span: "md:col-span-2",
+    span: "",
+  },
+  {
+    href: "/aidat-takip",
+    icon: "💰",
+    title: "Aidat Takip",
+    description: "Öğrenci bazlı aylık aidat ödemelerini, kalan borçları ve gecikmeleri yönetin.",
+    color: "from-emerald-600 to-green-600",
+    span: "",
+  },
+  {
+    href: "/personel-listesi",
+    icon: "👥",
+    title: "Personel Listesi",
+    description: "Okul personellerinin ve öğretmenlerin telefon, branş ve görev bilgilerini yönetin.",
+    color: "from-violet-500 to-fuchsia-600",
+    span: "",
   },
 ];
 
-const quickStats = [
-  { label: "Toplam Öğrenci", value: "324", icon: "👨‍🎓", trend: "+12" },
-  { label: "Sınıf Sayısı", value: "12", icon: "🏫", trend: "" },
-  { label: "Öğretmen", value: "28", icon: "👩‍🏫", trend: "+2" },
-  { label: "Ortalama Başarı", value: "%78", icon: "⭐", trend: "+5%" },
-];
-
 export default function HomePage() {
+  const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
+  const [personeller, setPersoneller] = useState<Personel[]>(demoPersoneller);
+  const [sinavSayisi, setSinavSayisi] = useState(0);
+  const [testSayisi, setTestSayisi] = useState(0);
+
+  // Firestore Canlı Abonelikler
+  useEffect(() => {
+    // 1. Öğrenciler
+    const unsubOgr = subscribeOgrenciler((list) => {
+      if (list && list.length > 0) {
+        setOgrenciler(list);
+      }
+    });
+
+    // 2. Personeller
+    const unsubPer = subscribePersoneller((list) => {
+      if (list && list.length > 0) {
+        setPersoneller(list);
+      }
+    });
+
+    // 3. Sınavlar
+    const unsubSinav = subscribeSinavlar((list) => {
+      setSinavSayisi(list.length);
+    });
+
+    // 4. Testler
+    const unsubTestler = onSnapshot(collection(db, "testler"), (snap) => {
+      setTestSayisi(snap.size);
+    }, () => {});
+
+    return () => {
+      unsubOgr();
+      unsubPer();
+      unsubSinav();
+      unsubTestler();
+    };
+  }, []);
+
+  // Aktif Sınıf/Şube Sayısı
+  const aktifSinifSayisi = useMemo(() => {
+    const set = new Set<string>();
+    ogrenciler.forEach((o) => {
+      if (o.sinif && o.sube) {
+        set.add(`${o.sinif}-${o.sube}`);
+      }
+    });
+    return set.size;
+  }, [ogrenciler]);
+
+  // Canlı İstatistikler
+  const quickStats = [
+    {
+      label: "Toplam Öğrenci",
+      value: `${ogrenciler.length}`,
+      icon: "👨‍🎓",
+      detail: `${aktifSinifSayisi} Aktif Şube`,
+      color: "text-indigo-600 dark:text-indigo-400",
+      bg: "bg-indigo-500/15",
+    },
+    {
+      label: "Kayıtlı Personel",
+      value: `${personeller.length}`,
+      icon: "👥",
+      detail: `${new Set(personeller.map((p) => p.brans)).size} Farklı Branş`,
+      color: "text-violet-600 dark:text-violet-400",
+      bg: "bg-violet-500/15",
+    },
+    {
+      label: "Toplam Sınav & Test",
+      value: `${sinavSayisi + testSayisi}`,
+      icon: "📝",
+      detail: `${testSayisi} Test / ${sinavSayisi} Sınav`,
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/15",
+    },
+    {
+      label: "Aktif Modül",
+      value: "12",
+      icon: "⚡",
+      detail: "Bulut Senkronize",
+      color: "text-amber-500",
+      bg: "bg-amber-500/15",
+    },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Welcome Banner */}
@@ -90,66 +205,69 @@ export default function HomePage() {
         <div className="absolute -top-12 -right-12 w-72 h-72 bg-white/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-8 -left-8 w-60 h-60 bg-purple-400/25 rounded-full blur-2xl" />
         <div className="relative z-10 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold text-white/95 border border-white/30">
-            <span>✨ 2026-2027 Öğretim Dönemi</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white border border-white/30">
+            <span>✨ 2026-2027 Eğitim Öğretim Dönemi</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight drop-shadow-sm">
-            Hoş Geldiniz! 👋
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-sm">
+            Öğretmen ve Yönetici Paneli 👋
           </h1>
-          <p className="text-white/90 text-base md:text-lg max-w-2xl font-normal leading-relaxed">
-            Eğitim araçları platformuna hoş geldiniz. Öğrenci takibi, sınav ve LGS analizleri, 
-            karne oluşturma ve haftalık planlamalarınızı tek bir yerden kolayca yönetin.
+          <p className="text-white/95 text-base md:text-lg max-w-3xl font-medium leading-relaxed">
+            Sınıf listeleri, yoklamalar, konu bazlı testler, LGS analizleri, karne oluşturma,
+            haftalık ders programı ve aidat takibini tek bir bulut platformundan yönetin.
           </p>
         </div>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats (Canlı Gerçek Adetler) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {quickStats.map((stat, i) => (
           <div
             key={stat.label}
-            className={`glass-card rounded-2xl p-5 card-hover animate-slide-up stagger-${i + 1}`}
-            style={{ opacity: 0 }}
+            className="glass-card rounded-2xl p-4 sm:p-5 card-hover flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-2xl">{stat.icon}</span>
-              {stat.trend && (
-                <span className="text-xs font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
-                  {stat.trend}
-                </span>
-              )}
+            <div className="flex items-center justify-between mb-2">
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center text-xl`}>
+                {stat.icon}
+              </div>
+              <span className="text-[11px] font-bold text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-md">
+                {stat.detail}
+              </span>
             </div>
-            <p className="text-2xl font-extrabold text-[var(--foreground)]">{stat.value}</p>
-            <p className="text-xs text-[var(--muted-foreground)] mt-1">{stat.label}</p>
+            <div>
+              <p className={`text-2xl sm:text-3xl font-black ${stat.color}`}>{stat.value}</p>
+              <p className="text-xs font-semibold text-[var(--muted-foreground)] mt-0.5">{stat.label}</p>
+            </div>
           </div>
         ))}
       </div>
 
       {/* Bento Grid - Tools */}
       <div>
-        <h2 className="text-xl font-bold text-[var(--foreground)] mb-4">📚 Eğitim Araçları</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {tools.map((tool, i) => (
+        <h2 className="text-xl font-black text-[var(--foreground)] mb-4 flex items-center gap-2">
+          <span>📚</span>
+          <span>Tüm Eğitim Araçları ({tools.length})</span>
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {tools.map((tool) => (
             <Link
               key={tool.href}
               href={tool.href}
-              className={`group glass-card rounded-2xl p-6 card-hover animate-slide-up stagger-${i + 1} ${tool.span}`}
-              style={{ opacity: 0 }}
+              className={`group glass-card rounded-2xl p-5 card-hover ${tool.span}`}
             >
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}>
                   {tool.icon}
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
                     {tool.title}
                   </h3>
-                  <p className="text-sm text-[var(--muted-foreground)] mt-1 leading-relaxed">
+                  <p className="text-xs text-[var(--muted-foreground)] mt-1 line-clamp-2 leading-relaxed">
                     {tool.description}
                   </p>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 shrink-0 self-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </div>

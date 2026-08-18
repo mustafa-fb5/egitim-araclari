@@ -10,29 +10,7 @@ import {
 } from "@/lib/firestore-service";
 
 // ==========================================
-// 1. OKUL NOTLARI MODELİ
-// ==========================================
-interface OkulKarneNotu {
-  ders: string;
-  sinav1: string;
-  sinav2: string;
-  performans: string;
-  proje: string;
-}
-
-const varsayilanOkulNotlari: OkulKarneNotu[] = [
-  { ders: "Türkçe", sinav1: "85", sinav2: "80", performans: "90", proje: "85" },
-  { ders: "Matematik", sinav1: "90", sinav2: "88", performans: "95", proje: "90" },
-  { ders: "Fen Bilimleri", sinav1: "78", sinav2: "82", performans: "85", proje: "80" },
-  { ders: "Sosyal Bilgiler", sinav1: "85", sinav2: "90", performans: "90", proje: "95" },
-  { ders: "İngilizce", sinav1: "92", sinav2: "95", performans: "100", proje: "95" },
-  { ders: "Din Kültürü ve Ahlak Bilgisi", sinav1: "95", sinav2: "90", performans: "95", proje: "100" },
-  { ders: "Beden Eğitimi ve Spor", sinav1: "100", sinav2: "100", performans: "100", proje: "100" },
-  { ders: "Görsel Sanatlar / Müzik", sinav1: "95", sinav2: "95", performans: "95", proje: "95" },
-];
-
-// ==========================================
-// 2. SINAV ANALİZİ MODELİ & DERSLERİ
+// SINAV ANALİZİ MODELİ & DERSLERİ
 // ==========================================
 const standartSinavDersleri = [
   { id: "turkce", ad: "Türkçe", soruSayisi: 20, katsayi: 4 },
@@ -72,7 +50,7 @@ const trToEn = (str: string): string => {
 };
 
 export default function PdfKarnePage() {
-  const [karneTuru, setKarneTuru] = useState<"toplu_sinav_gecmis" | "sinav_analiz" | "okul_notlari">("toplu_sinav_gecmis");
+  const [karneTuru, setKarneTuru] = useState<"toplu_sinav_gecmis" | "sinav_analiz">("toplu_sinav_gecmis");
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(demoOgrenciler);
   const [sinavlar, setSinavlar] = useState<Sinav[]>([]);
   const [secilenSinavId, setSecilenSinavId] = useState<string>("otomatik");
@@ -86,12 +64,8 @@ export default function PdfKarnePage() {
   const [okulBilgi, setOkulBilgi] = usePersistentState("egitim_pdf_karne_okul_bilgi", {
     okulAdi: "Atatürk Ortaokulu",
     donem: "2026-2027 Eğitim Öğretim Yılı / 2. Dönem",
-    ogretmenAdi: "Sınıf Rehber Öğretmeni",
-    mudurAdi: "Okul Müdürü",
   });
 
-  // Not State'leri
-  const [okulNotlari, setOkulNotlari] = useState<OkulKarneNotu[]>(varsayilanOkulNotlari);
   const [manuelSinavDersleri, setManuelSinavDersleri] = useState<SinavDersAnalizi[]>([]);
 
   // Firestore Realtime Senkronizasyonu
@@ -340,22 +314,6 @@ export default function PdfKarnePage() {
     };
   }, [aktifSinavDersleri]);
 
-  // Okul Notu Hesaplamaları
-  const okulDersOrtalama = (n: OkulKarneNotu): number => {
-    const s1 = Number(n.sinav1) || 0;
-    const s2 = Number(n.sinav2) || 0;
-    const p = Number(n.performans) || 0;
-    const pr = Number(n.proje) || 0;
-    const notlar = [s1, s2, p, pr].filter((v) => v > 0);
-    return notlar.length > 0 ? notlar.reduce((a, b) => a + b, 0) / notlar.length : 0;
-  };
-
-  const okulGenelOrtalama = useMemo(() => {
-    if (okulNotlari.length === 0) return 0;
-    const toplam = okulNotlari.reduce((acc, n) => acc + okulDersOrtalama(n), 0);
-    return toplam / okulNotlari.length;
-  }, [okulNotlari]);
-
   // =========================================================================
   // 1. PDF İNDİR: TOPLU SINAV GEÇMİŞİ VE BAŞARI KARNESİ
   // =========================================================================
@@ -440,20 +398,6 @@ export default function PdfKarnePage() {
         fillColor: [250, 252, 255],
       },
     });
-
-    const docWithAutoTable = doc as unknown as { lastAutoTable?: { finalY?: number } };
-    const finalY = docWithAutoTable.lastAutoTable?.finalY || 150;
-
-    // İmza Alanları
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(trToEn(okulBilgi.ogretmenAdi), 50, finalY + 25, { align: "center" });
-    doc.text("Sinif Rehber Ogretmeni", 50, finalY + 30, { align: "center" });
-    doc.line(25, finalY + 20, 75, finalY + 20);
-
-    doc.text(trToEn(okulBilgi.mudurAdi), 240, finalY + 25, { align: "center" });
-    doc.text("Okul Muduru", 240, finalY + 30, { align: "center" });
-    doc.line(215, finalY + 20, 265, finalY + 20);
 
     doc.save(`tum_sinavlar_karnesi_${seciliOgrenci.ad}_${seciliOgrenci.soyad}.pdf`);
   };
@@ -564,134 +508,25 @@ export default function PdfKarnePage() {
     doc.setTextColor(100, 100, 100);
     doc.text("3 Yanlis 1 Dogruyu Goturur Formulu", 120, finalY + 25);
 
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(trToEn(okulBilgi.ogretmenAdi), 40, finalY + 48, { align: "center" });
-    doc.text("Danisman Ogretmen", 40, finalY + 53, { align: "center" });
-    doc.line(20, finalY + 43, 60, finalY + 43);
-
-    doc.text(trToEn(okulBilgi.mudurAdi), 160, finalY + 48, { align: "center" });
-    doc.text("Okul Muduru", 160, finalY + 53, { align: "center" });
-    doc.line(140, finalY + 43, 180, finalY + 43);
-
     doc.save(`tek_sinav_karnesi_${seciliOgrenci.ad}_${seciliOgrenci.soyad}.pdf`);
-  };
-
-  // =========================================================================
-  // 3. PDF İNDİR: OKUL NOTLARI DÖNEM KARNESİ
-  // =========================================================================
-  const pdfOkulNotlariIndir = async () => {
-    const { jsPDF } = await import("jspdf");
-    const { default: autoTable } = await import("jspdf-autotable");
-
-    const doc = new jsPDF();
-
-    doc.setFillColor(79, 70, 229);
-    doc.rect(14, 12, 182, 8, "F");
-
-    doc.setFontSize(16);
-    doc.setTextColor(30, 27, 75);
-    doc.text("OGRENCI DONEM KARNESI", 105, 28, { align: "center" });
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(trToEn(okulBilgi.donem), 105, 36, { align: "center" });
-
-    doc.setDrawColor(220, 220, 240);
-    doc.setFillColor(248, 250, 255);
-    doc.roundedRect(14, 42, 182, 22, 3, 3, "FD");
-
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Ogrenci Adi Soyadi: ${trToEn(seciliOgrenci.ad)} ${trToEn(seciliOgrenci.soyad)}`, 20, 50);
-    doc.text(`Okul Numarasi: ${seciliOgrenci.numara}`, 20, 58);
-    doc.text(`Sinif / Sube: ${seciliOgrenci.sinif}-${seciliOgrenci.sube}`, 120, 50);
-    doc.text(`Duzenleme Tarihi: ${new Date().toLocaleDateString("tr-TR")}`, 120, 58);
-
-    const tableData = okulNotlari.map((n) => {
-      const ort = okulDersOrtalama(n);
-      return [
-        trToEn(n.ders),
-        n.sinav1 || "-",
-        n.sinav2 || "-",
-        n.performans || "-",
-        n.proje || "-",
-        ort > 0 ? ort.toFixed(1) : "-",
-        ort >= 50 ? "GECTI" : "KALDI",
-      ];
-    });
-
-    autoTable(doc, {
-      startY: 68,
-      head: [["Ders Adi", "1. Sinav", "2. Sinav", "Performans", "Proje", "Ortalama", "Sonuc"]],
-      body: tableData,
-      theme: "grid",
-      headStyles: {
-        fillColor: [79, 70, 229],
-        textColor: 255,
-        fontSize: 9,
-        halign: "center",
-      },
-      columnStyles: {
-        0: { halign: "left" },
-        1: { halign: "center" },
-        2: { halign: "center" },
-        3: { halign: "center" },
-        4: { halign: "center" },
-        5: { halign: "center", fontStyle: "bold" },
-        6: { halign: "center" },
-      },
-      styles: {
-        fontSize: 9,
-        cellPadding: 3,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 255],
-      },
-    });
-
-    const docWithAutoTable = doc as unknown as { lastAutoTable?: { finalY?: number } };
-    const finalY = docWithAutoTable.lastAutoTable?.finalY || 180;
-
-    const belgeMetni = okulGenelOrtalama >= 85 ? "TAKDIR BELGESI" : okulGenelOrtalama >= 70 ? "TESEKKUR BELGESI" : okulGenelOrtalama >= 50 ? "DOGRUDAN GECTI" : "SINIF TEKRARI";
-
-    doc.setFillColor(240, 243, 255);
-    doc.roundedRect(14, finalY + 8, 182, 18, 2, 2, "F");
-    doc.setFontSize(11);
-    doc.setTextColor(79, 70, 229);
-    doc.text(`Donem Genel Not Ortalamasi: ${okulGenelOrtalama.toFixed(2)}`, 20, finalY + 20);
-    doc.setTextColor(30, 27, 75);
-    doc.text(`Basari Durumu: ${belgeMetni}`, 120, finalY + 20);
-
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(trToEn(okulBilgi.ogretmenAdi), 40, finalY + 45, { align: "center" });
-    doc.text("Sinif Rehber Ogretmeni", 40, finalY + 50, { align: "center" });
-    doc.line(20, finalY + 40, 60, finalY + 40);
-
-    doc.text(trToEn(okulBilgi.mudurAdi), 160, finalY + 45, { align: "center" });
-    doc.text("Okul Muduru", 160, finalY + 50, { align: "center" });
-    doc.line(140, finalY + 40, 180, finalY + 40);
-
-    doc.save(`okul_karnesi_${seciliOgrenci.ad}_${seciliOgrenci.soyad}.pdf`);
   };
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Üst Başlık & 3'lü Karne Türü Seçici */}
+      {/* Üst Başlık & Karne Türü Seçici */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold gradient-text">📄 PDF Karne & Sonuç Raporları</h2>
           <p className="text-sm text-[var(--muted-foreground)] mt-1">
-            Öğrencinin tüm sınav geçmişi, tekil sınav analizi veya okul notları karnesini indirin.
+            Öğrencinin tüm sınav geçmişi veya tekil sınav analizi karnesini PDF olarak indirin.
           </p>
         </div>
 
-        {/* 3'lü Karne Seçim Butonları */}
+        {/* 2'li Karne Seçim Butonları */}
         <div className="flex flex-wrap items-center gap-1.5 bg-[var(--background)] p-1.5 rounded-2xl border border-[var(--border)]">
           <button
             onClick={() => setKarneTuru("toplu_sinav_gecmis")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               karneTuru === "toplu_sinav_gecmis"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25"
                 : "text-[var(--foreground)] hover:text-indigo-600"
@@ -702,7 +537,7 @@ export default function PdfKarnePage() {
           </button>
           <button
             onClick={() => setKarneTuru("sinav_analiz")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
               karneTuru === "sinav_analiz"
                 ? "bg-sky-600 text-white shadow-md shadow-sky-500/25"
                 : "text-[var(--foreground)] hover:text-sky-600"
@@ -710,17 +545,6 @@ export default function PdfKarnePage() {
           >
             <span>📈</span>
             <span>Tek Sınav Analiz Karnesi</span>
-          </button>
-          <button
-            onClick={() => setKarneTuru("okul_notlari")}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-              karneTuru === "okul_notlari"
-                ? "bg-emerald-600 text-white shadow-md"
-                : "text-[var(--foreground)] hover:text-emerald-600"
-            }`}
-          >
-            <span>📑</span>
-            <span>Okul Notları Karnesi</span>
           </button>
         </div>
       </div>
@@ -1055,112 +879,6 @@ export default function PdfKarnePage() {
                 })}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================= */}
-      {/* 3. SEÇENEK: OKUL NOTLARI KARNESİ */}
-      {/* ========================================================= */}
-      {karneTuru === "okul_notlari" && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="glass-card rounded-2xl p-6 overflow-x-auto">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-base font-bold text-[var(--foreground)]">
-                  📑 {seciliOgrenci.ad} {seciliOgrenci.soyad} - Dönem Notları
-                </h3>
-                <p className="text-xs text-[var(--muted-foreground)]">Karnede yer alacak ders notlarını kontrol edin veya düzenleyin.</p>
-              </div>
-
-              <button
-                onClick={pdfOkulNotlariIndir}
-                className="px-6 py-2.5 rounded-xl text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-all hover:scale-105 shadow-lg flex items-center gap-2"
-              >
-                <span>📄</span>
-                <span>Okul Notları Karnesi İndir (PDF)</span>
-              </button>
-            </div>
-
-            <table className="w-full table-modern">
-              <thead>
-                <tr>
-                  <th className="text-left p-3 rounded-tl-xl text-[var(--foreground)] font-semibold">Ders Adı</th>
-                  <th className="text-center p-3 text-[var(--foreground)] font-semibold">1. Sınav</th>
-                  <th className="text-center p-3 text-[var(--foreground)] font-semibold">2. Sınav</th>
-                  <th className="text-center p-3 text-[var(--foreground)] font-semibold">Performans</th>
-                  <th className="text-center p-3 text-[var(--foreground)] font-semibold">Proje</th>
-                  <th className="text-center p-3 text-[var(--foreground)] font-semibold">Ortalama</th>
-                  <th className="text-center p-3 rounded-tr-xl text-[var(--foreground)] font-semibold">Durum</th>
-                </tr>
-              </thead>
-              <tbody>
-                {okulNotlari.map((not, i) => {
-                  const ort = okulDersOrtalama(not);
-                  return (
-                    <tr key={i} className="border-b border-[var(--border)]">
-                      <td className="p-2">
-                        <input
-                          type="text"
-                          value={not.ders}
-                          onChange={(e) => {
-                            const y = [...okulNotlari];
-                            y[i].ders = e.target.value;
-                            setOkulNotlari(y);
-                          }}
-                          className="w-full px-3 py-1.5 rounded-lg border border-[var(--border)] bg-transparent text-sm font-medium text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                        />
-                      </td>
-                      {(["sinav1", "sinav2", "performans", "proje"] as const).map((alan) => (
-                        <td key={alan} className="p-2">
-                          <input
-                            type="number"
-                            value={not[alan]}
-                            onChange={(e) => {
-                              const y = [...okulNotlari];
-                              y[i][alan] = e.target.value;
-                              setOkulNotlari(y);
-                            }}
-                            className="w-full px-2 py-1.5 rounded-lg border border-[var(--border)] bg-transparent text-sm text-center font-bold text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-                            min="0"
-                            max="100"
-                          />
-                        </td>
-                      ))}
-                      <td className="p-2 text-center">
-                        <span className="text-base font-bold text-emerald-600">
-                          {ort > 0 ? ort.toFixed(1) : "-"}
-                        </span>
-                      </td>
-                      <td className="p-2 text-center">
-                        <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold ${
-                          ort >= 50 ? "badge-success" : "badge-danger"
-                        }`}>
-                          {ort >= 50 ? "Geçti" : "Kaldı"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Genel Sonuç Kartı */}
-          <div className="glass-card rounded-2xl p-6">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="text-center sm:text-left">
-                <p className="text-sm text-[var(--muted-foreground)]">Dönem Not Ortalaması</p>
-                <p className="text-4xl font-extrabold gradient-text mt-1">{okulGenelOrtalama.toFixed(2)}</p>
-              </div>
-
-              <div className="text-center sm:text-right">
-                <p className="text-sm text-[var(--muted-foreground)]">Karne Belge Durumu</p>
-                <p className={`text-xl font-black mt-1 ${okulGenelOrtalama >= 50 ? "text-emerald-500" : "text-red-500"}`}>
-                  {okulGenelOrtalama >= 85 ? "🏆 Takdir Belgesi" : okulGenelOrtalama >= 70 ? "🎖️ Teşekkür Belgesi" : okulGenelOrtalama >= 50 ? "✅ Doğrudan Geçti" : "❌ Sınıf Tekrarı"}
-                </p>
-              </div>
-            </div>
           </div>
         </div>
       )}

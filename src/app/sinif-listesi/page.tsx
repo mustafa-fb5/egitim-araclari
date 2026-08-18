@@ -24,18 +24,27 @@ export default function SinifListesiPage() {
 
   // Düzenleme Modu State'i
   const [duzenlenecekOgrenci, setDuzenlenecekOgrenci] = useState<Ogrenci | null>(null);
+  const [duzenleAdSoyad, setDuzenleAdSoyad] = useState("");
   
-  const [yeniOgrenci, setYeniOgrenci] = useState<Omit<Ogrenci, "id">>({
-    ad: "",
-    soyad: "",
+  const [yeniAdSoyad, setYeniAdSoyad] = useState("");
+  const [yeniOgrenci, setYeniOgrenci] = useState({
     numara: "",
     sinif: "1",
     sube: "A",
-    cinsiyet: "E",
+    cinsiyet: "E" as "E" | "K",
     veliTelefon: "",
     veliAd: "",
   });
   const [formAcik, setFormAcik] = useState(false);
+
+  const parseAdSoyad = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return { ad: "", soyad: "" };
+    if (parts.length === 1) return { ad: parts[0], soyad: "" };
+    const soyad = parts.pop() || "";
+    const ad = parts.join(" ");
+    return { ad, soyad };
+  };
 
   const filtrelenmis = ogrenciler.filter((o) => {
     const sinifUygun = secilenSinif === "Tümü" || o.sinif === secilenSinif;
@@ -46,23 +55,44 @@ export default function SinifListesiPage() {
   });
 
   const ekle = async () => {
-    if (!yeniOgrenci.ad || !yeniOgrenci.soyad || !yeniOgrenci.numara) {
-      alert("Ad, soyad ve numara zorunludur!");
+    if (!yeniAdSoyad.trim() || !yeniOgrenci.numara.trim()) {
+      alert("Ad Soyad ve numara zorunludur!");
       return;
     }
+    const { ad, soyad } = parseAdSoyad(yeniAdSoyad);
     const yeniId = ogrenciler.length > 0 ? Math.max(...ogrenciler.map((o) => o.id), 0) + 1 : 1;
-    const olusturulan: Ogrenci = { ...yeniOgrenci, id: yeniId };
+    const olusturulan: Ogrenci = {
+      id: yeniId,
+      ad,
+      soyad,
+      ...yeniOgrenci,
+    };
     
     // Firebase Firestore'a kaydet
     await saveOgrenci(olusturulan);
-    setYeniOgrenci({ ad: "", soyad: "", numara: "", sinif: "1", sube: "A", cinsiyet: "E", veliTelefon: "", veliAd: "" });
+    setYeniAdSoyad("");
+    setYeniOgrenci({ numara: "", sinif: "1", sube: "A", cinsiyet: "E", veliTelefon: "", veliAd: "" });
     setFormAcik(false);
+  };
+
+  const startEdit = (ogr: Ogrenci) => {
+    setDuzenlenecekOgrenci(ogr);
+    setDuzenleAdSoyad(`${ogr.ad} ${ogr.soyad}`.trim());
   };
 
   const guncelle = async () => {
     if (!duzenlenecekOgrenci) return;
+    if (!duzenleAdSoyad.trim() || !duzenlenecekOgrenci.numara.trim()) {
+      alert("Ad Soyad ve numara zorunludur!");
+      return;
+    }
+    const { ad, soyad } = parseAdSoyad(duzenleAdSoyad);
     // Firebase Firestore'a güncelle
-    await saveOgrenci(duzenlenecekOgrenci);
+    await saveOgrenci({
+      ...duzenlenecekOgrenci,
+      ad,
+      soyad,
+    });
     setDuzenlenecekOgrenci(null);
   };
 
@@ -113,7 +143,7 @@ export default function SinifListesiPage() {
                 type="text"
                 value={aramaMetni}
                 onChange={(e) => setAramaMetni(e.target.value)}
-                placeholder="Ad, soyad veya numara..."
+                placeholder="Ad soyad veya numara..."
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               />
             </div>
@@ -146,22 +176,13 @@ export default function SinifListesiPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Ad</label>
+              <div className="md:col-span-2">
+                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Ad Soyad</label>
                 <input
                   type="text"
-                  value={duzenlenecekOgrenci.ad}
-                  onChange={(e) => setDuzenlenecekOgrenci({ ...duzenlenecekOgrenci, ad: e.target.value })}
-                  className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-[var(--muted-foreground)] mb-1">Soyad</label>
-                <input
-                  type="text"
-                  value={duzenlenecekOgrenci.soyad}
-                  onChange={(e) => setDuzenlenecekOgrenci({ ...duzenlenecekOgrenci, soyad: e.target.value })}
+                  value={duzenleAdSoyad}
+                  onChange={(e) => setDuzenleAdSoyad(e.target.value)}
+                  placeholder="Örn: Ahmet Yılmaz"
                   className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
                 />
               </div>
@@ -257,27 +278,18 @@ export default function SinifListesiPage() {
       {formAcik && (
         <div className="glass-card rounded-2xl p-6 animate-slide-up" style={{ opacity: 0 }}>
           <h3 className="text-base font-bold text-[var(--foreground)] mb-4">➕ Yeni Öğrenci Ekle</h3>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Ad</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Ad Soyad</label>
               <input
                 type="text"
-                value={yeniOgrenci.ad}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, ad: e.target.value })}
-                placeholder="Örn: Ahmet"
+                value={yeniAdSoyad}
+                onChange={(e) => setYeniAdSoyad(e.target.value)}
+                placeholder="Örn: Ahmet Yılmaz"
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               />
             </div>
-            <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Soyad</label>
-              <input
-                type="text"
-                value={yeniOgrenci.soyad}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, soyad: e.target.value })}
-                placeholder="Örn: Yılmaz"
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              />
-            </div>
+
             <div>
               <label className="block text-xs text-[var(--muted-foreground)] mb-1">Numara</label>
               <input
@@ -287,6 +299,18 @@ export default function SinifListesiPage() {
                 placeholder="Örn: 105"
                 className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Cinsiyet</label>
+              <select
+                value={yeniOgrenci.cinsiyet}
+                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, cinsiyet: e.target.value as "E" | "K" })}
+                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
+              >
+                <option value="E">Erkek</option>
+                <option value="K">Kız</option>
+              </select>
             </div>
 
             <div>
@@ -316,18 +340,6 @@ export default function SinifListesiPage() {
             </div>
 
             <div>
-              <label className="block text-xs text-[var(--muted-foreground)] mb-1">Cinsiyet</label>
-              <select
-                value={yeniOgrenci.cinsiyet}
-                onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, cinsiyet: e.target.value as "E" | "K" })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
-              >
-                <option value="E">Erkek</option>
-                <option value="K">Kız</option>
-              </select>
-            </div>
-
-            <div>
               <label className="block text-xs text-[var(--muted-foreground)] mb-1">Veli Adı</label>
               <input
                 type="text"
@@ -349,7 +361,7 @@ export default function SinifListesiPage() {
               />
             </div>
 
-            <div className="md:col-span-4 flex justify-end gap-2 mt-2">
+            <div className="sm:col-span-2 md:col-span-3 lg:col-span-4 flex justify-end gap-2 mt-2">
               <button
                 onClick={() => setFormAcik(false)}
                 className="px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--secondary)] text-[var(--foreground)] hover:bg-gray-200 transition-all"
@@ -398,7 +410,7 @@ export default function SinifListesiPage() {
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full gradient-bg flex items-center justify-center text-white text-xs font-bold">
-                          {ogr.ad[0]}{ogr.soyad[0]}
+                          {(ogr.ad?.[0] || "") + (ogr.soyad?.[0] || "")}
                         </div>
                         <span className="font-medium text-sm">{ogr.ad} {ogr.soyad}</span>
                       </div>
@@ -417,7 +429,7 @@ export default function SinifListesiPage() {
                     <td className="p-3 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          onClick={() => setDuzenlenecekOgrenci(ogr)}
+                          onClick={() => startEdit(ogr)}
                           className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 font-medium transition-all"
                         >
                           ✏️ Düzenle
@@ -443,7 +455,7 @@ export default function SinifListesiPage() {
             >
               <div className="flex items-center gap-4 mb-3">
                 <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-md">
-                  {ogr.ad[0]}{ogr.soyad[0]}
+                  {(ogr.ad?.[0] || "") + (ogr.soyad?.[0] || "")}
                 </div>
                 <div>
                   <p className="font-bold text-[var(--foreground)]">{ogr.ad} {ogr.soyad}</p>
@@ -459,7 +471,7 @@ export default function SinifListesiPage() {
               </div>
               <div className="mt-3 flex justify-end gap-2">
                 <button
-                  onClick={() => setDuzenlenecekOgrenci(ogr)}
+                  onClick={() => startEdit(ogr)}
                   className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 font-medium transition-all"
                 >
                   ✏️ Düzenle
