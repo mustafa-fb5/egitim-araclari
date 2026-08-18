@@ -28,7 +28,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [iletisimAcik, setIletisimAcik] = useState(false);
-  const { isPro, isAdmin } = useAuth();
+  const { isPro, isAdmin, openProModal } = useAuth();
 
   // Sayfa değiştiğinde mobil menüyü otomatik kapat (Sayfaya tıklamama sorununu çözer)
   useEffect(() => {
@@ -113,24 +113,26 @@ export default function Sidebar() {
 
             if (isLocked) {
               return (
-                <Link
+                <button
                   key={item.href}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  prefetch={true}
-                  className="flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-60 hover:opacity-90 hover:bg-amber-500/10 hover:border-amber-500/25 backdrop-blur-sm sidebar-nav-link touch-manipulation cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    openProModal(item.label);
+                    setIsOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-70 hover:opacity-100 hover:bg-amber-500/15 hover:border-amber-500/30 backdrop-blur-sm sidebar-nav-link touch-manipulation cursor-pointer text-left active:scale-[0.98]"
                 >
                   <span className="text-lg grayscale group-hover:grayscale-0 transition-all">
                     {item.icon}
                   </span>
-                  <span className="truncate font-bold sidebar-nav-link">
+                  <span className="truncate font-bold sidebar-nav-link group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                     {item.label}
                   </span>
-                  <span className="ml-auto px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-sm">
+                  <span className="ml-auto px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-sm group-hover:scale-105 transition-transform">
                     <span>🔒</span>
                     <span>PRO</span>
                   </span>
-                </Link>
+                </button>
               );
             }
 

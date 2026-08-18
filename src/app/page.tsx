@@ -13,6 +13,8 @@ import {
 } from "@/lib/firestore-service";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
+import { freeRoutes } from "@/components/layout/sidebar";
 
 const tools = [
   {
@@ -114,6 +116,7 @@ const tools = [
 ];
 
 export default function HomePage() {
+  const { isPro, openProModal } = useAuth();
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
   const [personeller, setPersoneller] = useState<Personel[]>(getInitialPersoneller);
   const [sinavSayisi, setSinavSayisi] = useState(0);
@@ -246,33 +249,71 @@ export default function HomePage() {
           <span>Tüm Eğitim Araçları ({tools.length})</span>
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-          {tools.map((tool) => (
-            <Link
-              key={tool.href}
-              href={tool.href}
-              prefetch={true}
-              className={`group glass-card rounded-2xl p-4 sm:p-5 card-hover ${tool.span}`}
-            >
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-xl sm:text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}>
-                  {tool.icon}
+          {tools.map((tool) => {
+            const requiresPro = !freeRoutes.includes(tool.href);
+            const isLocked = requiresPro && !isPro;
+
+            if (isLocked) {
+              return (
+                <button
+                  key={tool.href}
+                  type="button"
+                  onClick={() => openProModal(tool.title)}
+                  className={`group glass-card rounded-2xl p-4 sm:p-5 card-hover ${tool.span} text-left cursor-pointer border border-amber-500/30 hover:border-amber-500/60 transition-all active:scale-[0.99]`}
+                >
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-xl sm:text-2xl shadow-lg group-hover:scale-110 transition-all duration-300 shrink-0 opacity-80 group-hover:opacity-100`}>
+                      {tool.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm sm:text-base font-bold text-[var(--foreground)] group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate">
+                          {tool.title}
+                        </h3>
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">
+                          🔒 PRO
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2 leading-relaxed">
+                        {tool.description}
+                      </p>
+                    </div>
+                    <div className="shrink-0 self-center text-amber-500 font-bold text-xs">
+                      Detay ⭐
+                    </div>
+                  </div>
+                </button>
+              );
+            }
+
+            return (
+              <Link
+                key={tool.href}
+                href={tool.href}
+                prefetch={true}
+                className={`group glass-card rounded-2xl p-4 sm:p-5 card-hover ${tool.span}`}
+              >
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-xl sm:text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}>
+                    {tool.icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm sm:text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
+                      {tool.title}
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2 leading-relaxed">
+                      {tool.description}
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-center opacity-50 group-hover:opacity-100 transition-all duration-300">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm sm:text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
-                    {tool.title}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2 leading-relaxed">
-                    {tool.description}
-                  </p>
-                </div>
-                <div className="shrink-0 self-center opacity-50 group-hover:opacity-100 transition-all duration-300">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>
