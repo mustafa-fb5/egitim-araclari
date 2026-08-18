@@ -6,7 +6,17 @@
       "**/.*",
       "**/node_modules/**"
     ],
-    "cleanUrls": true,
-    "trailingSlash": false
+    "trailingSlash": true,
+    "headers": [
+      {
+        "source": "/_next/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ]
   }
 }

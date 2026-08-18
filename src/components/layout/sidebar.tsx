@@ -28,7 +28,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [iletisimAcik, setIletisimAcik] = useState(false);
-  const { isPro, isAdmin, openProModal } = useAuth();
+  const { isPro, isAdmin } = useAuth();
 
   // Sayfa değiştiğinde mobil menüyü otomatik kapat (Sayfaya tıklamama sorununu çözer)
   useEffect(() => {
@@ -47,11 +47,7 @@ export default function Sidebar() {
     };
   }, [isOpen]);
 
-  const handleProClick = (e: React.MouseEvent, label: string) => {
-    e.preventDefault();
-    openProModal(label);
-    setIsOpen(false);
-  };
+
 
   return (
     <>
@@ -111,17 +107,18 @@ export default function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-4 space-y-1.5">
           {defaultMenuItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
             const requiresPro = !freeRoutes.includes(item.href);
             const isLocked = requiresPro && !isPro;
 
             if (isLocked) {
               return (
-                <button
+                <Link
                   key={item.href}
-                  type="button"
-                  onClick={(e) => handleProClick(e, item.label)}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-55 hover:opacity-85 hover:bg-amber-500/10 hover:border-amber-500/25 cursor-pointer backdrop-blur-sm sidebar-nav-link text-left touch-manipulation"
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  prefetch={true}
+                  className="flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-60 hover:opacity-90 hover:bg-amber-500/10 hover:border-amber-500/25 backdrop-blur-sm sidebar-nav-link touch-manipulation cursor-pointer"
                 >
                   <span className="text-lg grayscale group-hover:grayscale-0 transition-all">
                     {item.icon}
@@ -133,7 +130,7 @@ export default function Sidebar() {
                     <span>🔒</span>
                     <span>PRO</span>
                   </span>
-                </button>
+                </Link>
               );
             }
 
@@ -141,8 +138,9 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setIsOpen(false)}
                 prefetch={true}
-                className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] ${
+                className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"
                     : "bg-indigo-500/10 dark:bg-indigo-500/15 border-indigo-500/15 dark:border-indigo-500/20 hover:bg-indigo-500/20 dark:hover:bg-indigo-500/25 hover:border-indigo-500/30 backdrop-blur-sm sidebar-nav-link"
