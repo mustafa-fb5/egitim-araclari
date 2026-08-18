@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import ProGuard from "@/components/auth/pro-guard";
@@ -22,11 +22,16 @@ const pageNameMap: Record<string, string> = {
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isPro, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isFree = freeRoutes.includes(pathname);
 
-  // Eğer ücretsiz bir sayfadaysa veya kullanıcı Pro ise direkt içeriği göster
-  if (isFree || isPro || loading) {
+  // İstemci tarafında mount olana kadar veya ücretsiz sayfadaysa render et
+  if (!mounted || isFree || isPro || loading) {
     return <>{children}</>;
   }
 

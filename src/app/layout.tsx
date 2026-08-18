@@ -39,7 +39,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-[var(--background)] relative">
+      <body className="min-h-full bg-[var(--background)] relative" suppressHydrationWarning>
         <AuthProvider>
           <FloatingBubbles />
           <div className="flex min-h-screen relative z-10">

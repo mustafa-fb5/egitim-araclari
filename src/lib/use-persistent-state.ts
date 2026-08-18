@@ -1,6 +1,4 @@
-"use client";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export function usePersistentState<T>(key: string, initialValue: T): [T, (value: T | ((val: T) => T)) => void] {
   const [state, setState] = useState<T>(initialValue);
@@ -18,7 +16,7 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, (value:
     setHydrated(true);
   }, [key]);
 
-  const setPersistentState = (value: T | ((val: T) => T)) => {
+  const setPersistentState = useCallback((value: T | ((val: T) => T)) => {
     setState((prev) => {
       const next = typeof value === "function" ? (value as (val: T) => T)(prev) : value;
       try {
@@ -28,7 +26,7 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, (value:
       }
       return next;
     });
-  };
+  }, [key]);
 
   return [state, setPersistentState];
 }

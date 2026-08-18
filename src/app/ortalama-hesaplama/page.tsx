@@ -162,7 +162,7 @@ export default function OrtalamaHesaplamaPage() {
       unsubOgrenciler();
       unsubNotlar();
     };
-  }, [setTumNotlar]);
+  }, []);
 
   // Filtrelenmiş öğrenci listesi
   const filtrelenmisOgrenciler = useMemo(() => {

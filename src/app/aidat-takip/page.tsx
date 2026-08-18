@@ -94,7 +94,7 @@ export default function AidatTakipPage() {
       unsubAidatlar();
       unsubGlobal();
     };
-  }, [setAidatKayitlari, setGlobalAylikAidat]);
+  }, []);
 
   // Öğrenci için aidat kaydı getir (yoksa oluştur)
   const getOgrenciAidat = (ogrenciId: number): OgrenciAidat => {
