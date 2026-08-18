@@ -30,6 +30,7 @@ export default function RootLayout({
   return (
     <html lang="tr" className="h-full antialiased" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" href="/logo.png" />
         <link rel="apple-touch-icon" href="/logo.png" />
@@ -45,7 +46,7 @@ export default function RootLayout({
             <Sidebar />
             <div className="flex-1 lg:ml-72 flex flex-col min-h-screen">
               <Header />
-              <main className="flex-1 p-4 md:p-6 lg:p-8 mesh-gradient">
+              <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 mesh-gradient">
                 <RouteGuard>{children}</RouteGuard>
               </main>
             </div>

@@ -199,43 +199,43 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-5 sm:space-y-8">
       {/* Welcome Banner */}
-      <div className="relative overflow-hidden rounded-3xl gradient-bg p-8 md:p-10 text-white shadow-xl shadow-indigo-500/20 border border-white/20">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl gradient-bg p-5 sm:p-8 md:p-10 text-white shadow-xl shadow-indigo-500/20 border border-white/20">
         <div className="absolute -top-12 -right-12 w-72 h-72 bg-white/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-8 -left-8 w-60 h-60 bg-purple-400/25 rounded-full blur-2xl" />
-        <div className="relative z-10 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-bold text-white border border-white/30">
+        <div className="relative z-10 space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] sm:text-xs font-bold text-white border border-white/30">
             <span>✨ 2026-2027 Eğitim Öğretim Dönemi</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-sm">
+          <h1 className="text-2xl sm:text-3xl md:text-5xl font-black tracking-tight drop-shadow-sm leading-tight">
             Öğretmen ve Yönetici Paneli 👋
           </h1>
-          <p className="text-white/95 text-base md:text-lg max-w-3xl font-medium leading-relaxed">
-            Sınıf listeleri, yoklamalar, konu bazlı testler, LGS analizleri, karne oluşturma,
-            haftalık ders programı ve aidat takibini tek bir bulut platformundan yönetin.
+          <p className="text-white/90 text-xs sm:text-base md:text-lg max-w-3xl font-medium leading-relaxed">
+            Sınıf listeleri, yoklamalar, testler, LGS analizleri, karne oluşturma,
+            ders programı ve aidat takibini tek bir bulut platformundan yönetin.
           </p>
         </div>
       </div>
 
       {/* Quick Stats (Canlı Gerçek Adetler) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {quickStats.map((stat, i) => (
           <div
             key={stat.label}
-            className="glass-card rounded-2xl p-4 sm:p-5 card-hover flex flex-col justify-between"
+            className="glass-card rounded-2xl p-3 sm:p-5 card-hover flex flex-col justify-between min-w-0"
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center text-xl`}>
+            <div className="flex items-center justify-between mb-2 gap-1">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl ${stat.bg} flex items-center justify-center text-base sm:text-xl shrink-0`}>
                 {stat.icon}
               </div>
-              <span className="text-[11px] font-bold text-[var(--muted-foreground)] bg-[var(--secondary)] px-2 py-0.5 rounded-md">
+              <span className="text-[10px] sm:text-[11px] font-bold text-[var(--muted-foreground)] bg-[var(--secondary)] px-1.5 py-0.5 rounded-md truncate min-w-0 text-right">
                 {stat.detail}
               </span>
             </div>
             <div>
-              <p className={`text-2xl sm:text-3xl font-black ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs font-semibold text-[var(--muted-foreground)] mt-0.5">{stat.label}</p>
+              <p className={`text-xl sm:text-3xl font-black ${stat.color}`}>{stat.value}</p>
+              <p className="text-[10px] sm:text-xs font-semibold text-[var(--muted-foreground)] mt-0.5 leading-tight">{stat.label}</p>
             </div>
           </div>
         ))}
@@ -243,32 +243,32 @@ export default function HomePage() {
 
       {/* Bento Grid - Tools */}
       <div>
-        <h2 className="text-xl font-black text-[var(--foreground)] mb-4 flex items-center gap-2">
+        <h2 className="text-base sm:text-xl font-black text-[var(--foreground)] mb-3 sm:mb-4 flex items-center gap-2">
           <span>📚</span>
           <span>Tüm Eğitim Araçları ({tools.length})</span>
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           {tools.map((tool) => (
             <Link
               key={tool.href}
               href={tool.href}
               prefetch={true}
-              className={`group glass-card rounded-2xl p-5 card-hover ${tool.span}`}
+              className={`group glass-card rounded-2xl p-4 sm:p-5 card-hover ${tool.span}`}
             >
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}>
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center text-xl sm:text-2xl shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shrink-0`}>
                   {tool.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
+                  <h3 className="text-sm sm:text-base font-bold text-[var(--foreground)] group-hover:text-[var(--primary)] transition-colors truncate">
                     {tool.title}
                   </h3>
-                  <p className="text-xs text-[var(--muted-foreground)] mt-1 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-[var(--muted-foreground)] mt-0.5 line-clamp-2 leading-relaxed">
                     {tool.description}
                   </p>
                 </div>
-                <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-2 group-hover:translate-x-0 shrink-0 self-center">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
+                <div className="shrink-0 self-center opacity-50 group-hover:opacity-100 transition-all duration-300">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--primary)]">
                     <polyline points="9 18 15 12 9 6" />
                   </svg>
                 </div>

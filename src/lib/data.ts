@@ -61,12 +61,8 @@ export const dersSaatleri = [
 export const demoOgrenciler: Ogrenci[] = [
   { id: 1, ad: "Ahmet", soyad: "Yılmaz", numara: "101", sinif: "5", sube: "A", cinsiyet: "E", veliTelefon: "0532 111 2233", veliAd: "Mehmet Yılmaz" },
   { id: 2, ad: "Ayşe", soyad: "Kaya", numara: "102", sinif: "5", sube: "A", cinsiyet: "K", veliTelefon: "0533 222 3344", veliAd: "Fatma Kaya" },
-  { id: 3, ad: "Mehmet", soyad: "Demir", numara: "103", sinif: "5", sube: "B", cinsiyet: "E", veliTelefon: "0534 333 4455", veliAd: "Ali Demir" },
+  { id: 3, ad: "Mehmet", soyad: "Demir", numara: "103", sinif: "6", sube: "B", cinsiyet: "E", veliTelefon: "0534 333 4455", veliAd: "Ali Demir" },
   { id: 4, ad: "Fatma", soyad: "Çelik", numara: "104", sinif: "6", sube: "A", cinsiyet: "K", veliTelefon: "0535 444 5566", veliAd: "Hasan Çelik" },
-  { id: 5, ad: "Ali", soyad: "Şahin", numara: "105", sinif: "7", sube: "C", cinsiyet: "E", veliTelefon: "0536 555 6677", veliAd: "Hüseyin Şahin" },
-  { id: 6, ad: "Zeynep", soyad: "Yıldız", numara: "106", sinif: "8", sube: "A", cinsiyet: "K", veliTelefon: "0537 666 7788", veliAd: "Mustafa Yıldız" },
-  { id: 7, ad: "Emre", soyad: "Özdemir", numara: "107", sinif: "9", sube: "B", cinsiyet: "E", veliTelefon: "0538 777 8899", veliAd: "İbrahim Özdemir" },
-  { id: 8, ad: "Elif", soyad: "Arslan", numara: "108", sinif: "12", sube: "S", cinsiyet: "K", veliTelefon: "0539 888 9900", veliAd: "Osman Arslan" },
 ];
 
 export const demoOgretmenler: Ogretmen[] = [
@@ -74,12 +70,6 @@ export const demoOgretmenler: Ogretmen[] = [
   { id: 2, ad: "Fatma", soyad: "Kılıç", brans: "Matematik" },
   { id: 3, ad: "Mehmet", soyad: "Yılmaz", brans: "Fen Bilimleri" },
   { id: 4, ad: "Ayşe", soyad: "Demir", brans: "Sosyal Bilgiler" },
-  { id: 5, ad: "Ali", soyad: "Çelik", brans: "İngilizce" },
-  { id: 6, ad: "Zeynep", soyad: "Şahin", brans: "Din Kültürü" },
-  { id: 7, ad: "Hasan", soyad: "Arslan", brans: "Müzik" },
-  { id: 8, ad: "Emine", soyad: "Kurt", brans: "Görsel Sanatlar" },
-  { id: 9, ad: "Murat", soyad: "Aydın", brans: "Beden Eğitimi" },
-  { id: 10, ad: "Seda", soyad: "Koç", brans: "Teknoloji ve Tasarım" },
 ];
 
 export interface Personel {
@@ -92,14 +82,8 @@ export interface Personel {
 export const demoPersoneller: Personel[] = [
   { id: 1, adSoyad: "Ahmet Öztürk", telefon: "0532 101 2030", brans: "Türkçe" },
   { id: 2, adSoyad: "Fatma Kılıç", telefon: "0533 202 3040", brans: "Matematik" },
-  { id: 3, adSoyad: "Mehmet Yılmaz", telefon: "0534 303 4050", brans: "Fen Bilimleri" },
-  { id: 4, adSoyad: "Ayşe Demir", telefon: "0535 404 5060", brans: "Sosyal Bilgiler" },
-  { id: 5, adSoyad: "Ali Çelik", telefon: "0536 505 6070", brans: "İngilizce" },
-  { id: 6, adSoyad: "Zeynep Şahin", telefon: "0537 606 7080", brans: "Din Kültürü" },
-  { id: 7, adSoyad: "Hasan Arslan", telefon: "0538 707 8090", brans: "Müdür" },
-  { id: 8, adSoyad: "Emine Kurt", telefon: "0539 808 9000", brans: "Müdür Yardımcısı" },
-  { id: 9, adSoyad: "Murat Aydın", telefon: "0540 909 0110", brans: "Rehberlik" },
-  { id: 10, adSoyad: "Seda Koç", telefon: "0541 010 1220", brans: "Bilişim Teknolojileri" },
+  { id: 3, adSoyad: "Mehmet Yılmaz", telefon: "0534 303 4050", brans: "Müdür" },
+  { id: 4, adSoyad: "Ayşe Demir", telefon: "0535 404 5060", brans: "Müdür Yardımcısı" },
 ];
 
 export const nobetYerleri = ["Ana Koridor", "1. Kat Koridor", "2. Kat Koridor", "Bahçe", "Kantin", "Giriş Kapısı"];
@@ -110,10 +94,6 @@ export const demoSinavSonuclari = [
   { ogrenci: "Ayşe Kaya", puan: 92 },
   { ogrenci: "Mehmet Demir", puan: 78 },
   { ogrenci: "Fatma Çelik", puan: 65 },
-  { ogrenci: "Ali Şahin", puan: 88 },
-  { ogrenci: "Zeynep Yıldız", puan: 95 },
-  { ogrenci: "Emre Özdemir", puan: 72 },
-  { ogrenci: "Elif Arslan", puan: 58 },
 ];
 
 // Aylık başarı trend verisi

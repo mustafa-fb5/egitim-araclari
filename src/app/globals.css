@@ -92,6 +92,21 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
+  /* Mobil için dokunmatik boyutlandırma ve taşma önleme */
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+/* Tüm kutular sınır dışına taşmasın */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+/* Mobil'de minimum buton/link dokunma alanı */
+@media (max-width: 640px) {
+  button, a {
+    min-height: 36px;
+  }
 }
 
 /* ===== Glassmorphism ===== */
