@@ -419,7 +419,7 @@ const NOBET_COL = "nobet_cizelgeleri";
 export interface NobetAtamasiData {
   ogretmenId: number;
   gun: string;
-  yer: string;
+  yer?: string;
 }
 
 export function subscribeNobetAtamalari(callback: (atamalar: NobetAtamasiData[]) => void) {

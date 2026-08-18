@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { demoOgretmenler as varsayilanOgretmenler, gunler, nobetYerleri } from "@/lib/data";
+import { demoOgretmenler as varsayilanOgretmenler, gunler } from "@/lib/data";
 import {
   subscribeNobetAtamalari,
   saveNobetAtamalari,
@@ -12,22 +12,22 @@ import {
 } from "@/lib/firestore-service";
 
 const varsayilanAtamalar: NobetAtamasi[] = [
-  { ogretmenId: 1, gun: "Pazartesi", yer: "Ana Koridor" },
-  { ogretmenId: 2, gun: "Pazartesi", yer: "Bahçe" },
-  { ogretmenId: 3, gun: "Salı", yer: "Ana Koridor" },
-  { ogretmenId: 4, gun: "Salı", yer: "Kantin" },
-  { ogretmenId: 5, gun: "Çarşamba", yer: "1. Kat Koridor" },
-  { ogretmenId: 6, gun: "Çarşamba", yer: "Bahçe" },
-  { ogretmenId: 7, gun: "Perşembe", yer: "Ana Koridor" },
-  { ogretmenId: 8, gun: "Perşembe", yer: "Giriş Kapısı" },
-  { ogretmenId: 9, gun: "Cuma", yer: "Bahçe" },
-  { ogretmenId: 10, gun: "Cuma", yer: "Kantin" },
+  { ogretmenId: 1, gun: "Pazartesi" },
+  { ogretmenId: 2, gun: "Pazartesi" },
+  { ogretmenId: 3, gun: "Salı" },
+  { ogretmenId: 4, gun: "Salı" },
+  { ogretmenId: 5, gun: "Çarşamba" },
+  { ogretmenId: 6, gun: "Çarşamba" },
+  { ogretmenId: 7, gun: "Perşembe" },
+  { ogretmenId: 8, gun: "Perşembe" },
+  { ogretmenId: 9, gun: "Cuma" },
+  { ogretmenId: 10, gun: "Cuma" },
 ];
 
 export default function NobetCizelgesiPage() {
   const [ogretmenler, setOgretmenler] = useState<OgretmenBilgisi[]>(varsayilanOgretmenler);
   const [atamalar, setAtamalar] = useState<NobetAtamasi[]>(varsayilanAtamalar);
-  const [yeniAtama, setYeniAtama] = useState({ ogretmenId: 1, gun: "Pazartesi", yer: "Ana Koridor" });
+  const [yeniAtama, setYeniAtama] = useState({ ogretmenId: 1, gun: "Pazartesi" });
 
   // Modal State'leri
   const [ogretmenModalAcik, setOgretmenModalAcik] = useState(false);
@@ -87,15 +87,14 @@ export default function NobetCizelgesiPage() {
     }
     const yeniAtamalar: NobetAtamasi[] = [];
     gunler.forEach((gun, gi) => {
-      const yerler = nobetYerleri.slice(0, 2);
-      yerler.forEach((yer, yi) => {
+      // Her güne 2 öğretmen ata
+      for (let yi = 0; yi < 2; yi++) {
         const idx = (gi * 2 + yi) % ogretmenler.length;
         yeniAtamalar.push({
           ogretmenId: ogretmenler[idx].id,
           gun,
-          yer,
         });
-      });
+      }
     });
 
     setAtamalar(yeniAtamalar);
@@ -178,9 +177,9 @@ export default function NobetCizelgesiPage() {
       {/* Kontroller */}
       <div className="glass-card rounded-2xl p-6">
         <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Öğretmen</label>
+              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Öğretmen Seçimi</label>
               <select
                 value={yeniAtama.ogretmenId}
                 onChange={(e) => setYeniAtama({ ...yeniAtama, ogretmenId: Number(e.target.value) })}
@@ -192,7 +191,7 @@ export default function NobetCizelgesiPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Gün</label>
+              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Nöbet Günü</label>
               <select
                 value={yeniAtama.gun}
                 onChange={(e) => setYeniAtama({ ...yeniAtama, gun: e.target.value })}
@@ -200,18 +199,6 @@ export default function NobetCizelgesiPage() {
               >
                 {gunler.map((g) => (
                   <option key={g} value={g}>{g}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Nöbet Yeri</label>
-              <select
-                value={yeniAtama.yer}
-                onChange={(e) => setYeniAtama({ ...yeniAtama, yer: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)] font-semibold"
-              >
-                {nobetYerleri.map((y) => (
-                  <option key={y} value={y}>{y}</option>
                 ))}
               </select>
             </div>
@@ -226,7 +213,7 @@ export default function NobetCizelgesiPage() {
             </button>
             <button onClick={ekle} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-[var(--primary)] text-white hover:opacity-90 transition-all shadow-md flex items-center gap-1">
               <span>➕</span>
-              <span>Ekle</span>
+              <span>Nöbet Ekle</span>
             </button>
             <button onClick={otomatikDagit} className="px-4 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-white hover:opacity-90 transition-all shadow-lg flex items-center gap-1">
               <span>🔄</span>
@@ -259,8 +246,7 @@ export default function NobetCizelgesiPage() {
                             <p className="text-sm font-bold text-[var(--foreground)]">
                               {ogretmen ? `${ogretmen.ad} ${ogretmen.soyad}` : "Bilinmeyen Öğretmen"}
                             </p>
-                            <p className="text-xs text-[var(--muted-foreground)] font-medium">{ogretmen?.brans || "-"}</p>
-                            <p className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mt-1">📍 {atama.yer}</p>
+                            <p className="text-xs text-[var(--muted-foreground)] font-medium mt-0.5">{ogretmen?.brans || "-"}</p>
                           </div>
                           <button
                             onClick={() => sil(atamalar.indexOf(atama))}
