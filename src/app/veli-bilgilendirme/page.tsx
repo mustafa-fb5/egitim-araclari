@@ -38,8 +38,12 @@ export default function VeliBilgilendirmePage() {
   const [kopyalandi, setKopyalandi] = useState(false);
 
   const mesajOlustur = () => {
+    if (!secilenOgrenci) {
+      alert("Lütfen önce bir öğrenci seçiniz.");
+      return;
+    }
     let sablon = mesajSablonlari[sablonTuru];
-    sablon = sablon.replace("{veliAd}", secilenOgrenci.veliAd);
+    sablon = sablon.replace("{veliAd}", secilenOgrenci.veliAd || "");
     sablon = sablon.replace("{ogrenciAd}", `${secilenOgrenci.ad} ${secilenOgrenci.soyad}`);
     sablon = sablon.replace("{tarih}", ekBilgiler.tarih);
     sablon = sablon.replace("{toplam}", ekBilgiler.toplam);
@@ -58,6 +62,10 @@ export default function VeliBilgilendirmePage() {
   };
 
   const whatsappGonder = () => {
+    if (!secilenOgrenci || !secilenOgrenci.veliTelefon) {
+      alert("Seçilen öğrencinin veli telefon numarası bulunamadı.");
+      return;
+    }
     const tel = secilenOgrenci.veliTelefon.replace(/\s/g, "");
     const url = `https://wa.me/90${tel.slice(1)}?text=${encodeURIComponent(olusturulanMesaj)}`;
     window.open(url, "_blank");
@@ -68,7 +76,7 @@ export default function VeliBilgilendirmePage() {
       {/* Öğrenci Seçimi */}
       <div className="glass-card rounded-2xl p-6">
         <h3 className="text-base font-bold text-[var(--foreground)] mb-4">👨‍🎓 Öğrenci Seçimi</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-[var(--muted-foreground)] mb-2">Öğrenci</label>
             <select
@@ -80,7 +88,7 @@ export default function VeliBilgilendirmePage() {
               className="w-full px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
             >
               {ogrenciler.map((o) => (
-                <option key={o.id} value={o.id}>{o.ad} {o.soyad} - {o.sinif}/{o.sube}</option>
+                <option key={o.id} value={o.id}>{o.ad} {o.soyad} ({o.sinif}-{o.sube} No: {o.numara})</option>
               ))}
             </select>
           </div>
@@ -104,13 +112,13 @@ export default function VeliBilgilendirmePage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="glass-card rounded-2xl p-5">
           <h4 className="text-sm font-bold text-[var(--muted-foreground)] mb-3">📱 Veli Bilgileri</h4>
-          <p className="font-medium text-[var(--foreground)]">{secilenOgrenci.veliAd}</p>
-          <p className="text-sm text-[var(--muted-foreground)]">{secilenOgrenci.veliTelefon}</p>
+          <p className="font-medium text-[var(--foreground)]">{secilenOgrenci?.veliAd || "—"}</p>
+          <p className="text-sm text-[var(--muted-foreground)]">{secilenOgrenci?.veliTelefon || "—"}</p>
         </div>
         <div className="glass-card rounded-2xl p-5">
           <h4 className="text-sm font-bold text-[var(--muted-foreground)] mb-3">🎓 Öğrenci Bilgileri</h4>
-          <p className="font-medium text-[var(--foreground)]">{secilenOgrenci.ad} {secilenOgrenci.soyad}</p>
-          <p className="text-sm text-[var(--muted-foreground)]">{secilenOgrenci.sinif} • No: {secilenOgrenci.numara}</p>
+          <p className="font-medium text-[var(--foreground)]">{secilenOgrenci ? `${secilenOgrenci.ad} ${secilenOgrenci.soyad}` : "—"}</p>
+          <p className="text-sm text-[var(--muted-foreground)]">{secilenOgrenci ? `${secilenOgrenci.sinif} • No: ${secilenOgrenci.numara}` : "—"}</p>
         </div>
       </div>
 
