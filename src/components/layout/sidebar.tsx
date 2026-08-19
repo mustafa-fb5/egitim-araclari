@@ -120,7 +120,7 @@ export default function Sidebar() {
                   type="button"
                   onClick={() => {
                     openProModal(item.label);
-                    setIsOpen(false);
+                    setTimeout(() => setIsOpen(false), 150);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-70 hover:opacity-100 hover:bg-amber-500/15 hover:border-amber-500/30 backdrop-blur-sm sidebar-nav-link touch-manipulation cursor-pointer text-left active:scale-[0.98]"
                 >
@@ -142,7 +142,7 @@ export default function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setIsOpen(false)}
+                onClick={() => setTimeout(() => setIsOpen(false), 150)}
                 prefetch={false}
                 className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] cursor-pointer ${
                   isActive
@@ -169,7 +169,7 @@ export default function Sidebar() {
               <Link
                 href="/admin"
                 prefetch={true}
-                onClick={() => setIsOpen(false)}
+                onClick={() => setTimeout(() => setIsOpen(false), 150)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all duration-200 border ${
                   pathname === "/admin"
                     ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400 scale-[1.02]"
