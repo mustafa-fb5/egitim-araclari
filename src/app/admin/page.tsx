@@ -8,6 +8,11 @@ export default function AdminPage() {
   const { user, isAdmin, loading: authLoading, getAllUsers, setUserProDuration, cancelUserPro } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [arama, setArama] = useState("");
   const [filtre, setFiltre] = useState<"hepsi" | "pro" | "standart" | "kritik">("hepsi");
 
@@ -111,7 +116,7 @@ export default function AdminPage() {
     setEmailModalOpen(false);
   };
 
-  if (authLoading) {
+  if (!mounted || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />

@@ -104,20 +104,29 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
 export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
   let lastSentJson = "";
 
-  // 1. Varsa önbellekteki veriyi hemen aktar
-  if (typeof window !== "undefined") {
+  const getCachedData = (): Ogrenci[] => {
+    if (typeof window === "undefined") return [];
     try {
       const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          lastSentJson = cached;
-          callback(parsed);
-        }
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {
       // ignore
     }
+    return [];
+  };
+
+  // 1. Varsa önbellekteki veriyi hemen aktar
+  const initialCache = getCachedData();
+  if (initialCache.length > 0) {
+    lastSentJson = JSON.stringify(initialCache);
+    callback(initialCache);
+  } else if (getActiveUserUid() === "guest") {
+    const demo = demoOgrenciler.slice(0, 4);
+    lastSentJson = JSON.stringify(demo);
+    callback(demo);
   }
 
   // 2. Firestore gerçek zamanlı dinleyici
@@ -126,16 +135,23 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     snap.forEach((d) => list.push(d.data() as Ogrenci));
     list.sort((a, b) => Number(a.numara) - Number(b.numara));
     
-    // Eğer misafir kullanıcıysa ve bulutta henüz öğrenci yoksa 4 örnek öğrenciyi göster
-    const finalResult = (getActiveUserUid() === "guest" && list.length === 0)
-      ? demoOgrenciler.slice(0, 4)
-      : list;
+    // Eğer Firestore'da veri varsa onu kullan
+    let finalResult = list;
+    if (list.length === 0) {
+      // Bulutta henüz veri yoksa veya yüklenmediyse yerel önbelleğe bak
+      const local = getCachedData();
+      if (local.length > 0) {
+        finalResult = local;
+      } else if (getActiveUserUid() === "guest") {
+        finalResult = demoOgrenciler.slice(0, 4);
+      }
+    }
 
     const json = JSON.stringify(finalResult);
     if (json === lastSentJson) return;
     lastSentJson = json;
 
-    if (typeof window !== "undefined") {
+    if (typeof window !== "undefined" && finalResult.length > 0) {
       try {
         localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
       } catch {
@@ -146,8 +162,9 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
     callback(finalResult);
   }, (err) => {
     console.warn("Firestore subscription warning (offline or guest):", err);
-    // Hata durumunda (offline veya misafir yetkisi yoksa) önbellek veya varsayılan 4 öğrenciyi dön
-    const fallback = getInitialOgrenciler();
+    // Hata durumunda yerel önbellekteki mevcut veriyi koru, asla silme
+    const local = getCachedData();
+    const fallback = local.length > 0 ? local : (getActiveUserUid() === "guest" ? demoOgrenciler.slice(0, 4) : []);
     const json = JSON.stringify(fallback);
     if (json !== lastSentJson) {
       lastSentJson = json;
@@ -157,9 +174,9 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
 }
 
 export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
+  const cacheKey = userCacheKey("egitim_ogrenciler_cache");
   if (typeof window !== "undefined") {
     try {
-      const cacheKey = userCacheKey("egitim_ogrenciler_cache");
       const cached = localStorage.getItem(cacheKey);
       let list: Ogrenci[] = cached ? JSON.parse(cached) : [];
       const idx = list.findIndex((o) => o.id === ogrenci.id);
@@ -173,7 +190,12 @@ export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
       // ignore
     }
   }
-  await setDoc(userDoc(OGRENCILER_COL, String(ogrenci.id)), ogrenci);
+  
+  try {
+    await setDoc(userDoc(OGRENCILER_COL, String(ogrenci.id)), ogrenci);
+  } catch (error) {
+    console.warn("Firestore saveOgrenci error, saved locally:", error);
+  }
 }
 
 export async function deleteOgrenci(ogrenciId: number): Promise<void> {

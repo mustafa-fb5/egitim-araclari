@@ -28,7 +28,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [iletisimAcik, setIletisimAcik] = useState(false);
-  const { isPro, isAdmin, openProModal } = useAuth();
+  const { isPro, isAdmin, loading, openProModal } = useAuth();
 
   // Sayfa değiştiğinde mobil menüyü otomatik kapat (Sayfaya tıklamama sorununu çözer)
   useEffect(() => {
@@ -111,7 +111,8 @@ export default function Sidebar() {
             const itemNorm = (item.href || "/").replace(/\/+$/, "") || "/";
             const isActive = currentNorm === itemNorm || (itemNorm !== "/" && currentNorm.startsWith(itemNorm));
             const requiresPro = !freeRoutes.some((fr) => (fr.replace(/\/+$/, "") || "/") === itemNorm);
-            const isLocked = requiresPro && !isPro;
+            // loading süresince kilitleme: Firebase/localStorage henüz yüklenmemiş olabilir
+            const isLocked = requiresPro && !isPro && !loading;
 
             if (isLocked) {
               return (

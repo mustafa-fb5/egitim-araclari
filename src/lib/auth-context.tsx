@@ -6,7 +6,6 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   collection,
   getDocs,
 } from "firebase/firestore";
@@ -169,9 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // ignore
     }
-    if (typeof window !== "undefined") {
-      window.location.reload();
-    }
+    // NOT: window.location.reload() kaldırıldı.
+    // React state güncellemesi (setUser) yeterli; reload gereksiz yeniden yükleme
+    // yapıyor ve bu sürede isPro=false penceresi oluşturarak sekme kilitlemesine
+    // yol açıyordu.
   };
 
   // =================== KAYIT OL (ANINDA YANIT) ===================
@@ -395,10 +395,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
         });
 
-        // Birleştir
+        // Birleştir: Önce Firestore (temel veri), sonra local (son Pro güncellemeleri korunur)
+        // Önemli: Local data son Pro atamasını içerebilir, Firestore henüz güncellenmemiş olabilir
         const mergedMap = new Map<string, AppUser>();
-        localList.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
         remoteUsers.forEach((u) => mergedMap.set(u.email.toLowerCase(), u));
+        // Local'de isPro:true olan kullanıcılar için local veriyi koru
+        localList.forEach((u) => {
+          const existing = mergedMap.get(u.email.toLowerCase());
+          if (!existing) {
+            mergedMap.set(u.email.toLowerCase(), u);
+          } else {
+            // Local'de Pro varsa ve Firestore'da yoksa → local Pro korunur
+            const localDaysLeft = calculateDaysLeft(u.proExpiresAt);
+            const remoteDaysLeft = calculateDaysLeft(existing.proExpiresAt);
+            if (localDaysLeft > remoteDaysLeft) {
+              mergedMap.set(u.email.toLowerCase(), { ...existing, isPro: u.isPro, proExpiresAt: u.proExpiresAt, proStartedAt: u.proStartedAt, proDaysLeft: localDaysLeft });
+            }
+          }
+        });
 
         const result = Array.from(mergedMap.values()).sort((a, b) => {
           if (a.role === "admin") return -1;
@@ -436,12 +450,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         saveSession({ ...user, isPro: true, proExpiresAt, proStartedAt, proDaysLeft: days });
       }
 
-      // Firestore'da arka planda güncelle
-      withTimeout(
-        updateDoc(doc(db, "kullanicilar", uid), { isPro: true, proExpiresAt, proStartedAt }),
-        2000,
-        null
-      ).catch(() => {});
+      // Firestore'a YAZ ve bekle (updateDoc yerine setDoc+merge — döküman yoksa hata vermez)
+      // Race condition önlemi: fetchUsers'dan önce Firestore güncellemesi tamamlanmalı
+      try {
+        await withTimeout(
+          setDoc(doc(db, "kullanicilar", uid), { isPro: true, proExpiresAt, proStartedAt }, { merge: true }),
+          5000,
+          null
+        );
+      } catch {
+        // Firestore yazılamadıysa sessizce devam et (local zaten güncellendi)
+      }
 
       return { success: true };
     } catch (e) {
@@ -465,11 +484,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         saveSession({ ...user, isPro: false, proExpiresAt: null, proDaysLeft: 0 });
       }
 
-      withTimeout(
-        updateDoc(doc(db, "kullanicilar", uid), { isPro: false, proExpiresAt: null }),
-        2000,
-        null
-      ).catch(() => {});
+      try {
+        await withTimeout(
+          setDoc(doc(db, "kullanicilar", uid), { isPro: false, proExpiresAt: null }, { merge: true }),
+          5000,
+          null
+        );
+      } catch {
+        // ignore
+      }
 
       return { success: true };
     } catch (e) {

@@ -66,8 +66,8 @@ export default function SinifListesiPage() {
   });
 
   const ekle = async () => {
-    if (!yeniAdSoyad.trim() || !yeniOgrenci.numara.trim()) {
-      alert("Ad Soyad ve numara zorunludur!");
+    if (!yeniAdSoyad.trim()) {
+      alert("Ad Soyad zorunludur!");
       return;
     }
 
@@ -82,19 +82,23 @@ export default function SinifListesiPage() {
     }
 
     const { ad, soyad } = parseAdSoyad(yeniAdSoyad);
-    const yeniId = ogrenciler.length > 0 ? Math.max(...ogrenciler.map((o) => o.id), 0) + 1 : 1;
+    // Benzersiz ID üret (Zaman damgası + rastgele sayı ile asla eski bir öğrenci ID'si ile çakışmaz)
+    const yeniId = Date.now() + Math.floor(Math.random() * 1000);
     const olusturulan: Ogrenci = {
       id: yeniId,
       ad,
       soyad,
       ...yeniOgrenci,
+      numara: (yeniOgrenci.numara || "").trim(),
     };
     
-    // Firebase Firestore'a kaydet
-    await saveOgrenci(olusturulan);
+    // Formu hemen kapat ve alanları sıfırla
+    setFormAcik(false);
     setYeniAdSoyad("");
     setYeniOgrenci({ numara: "", sinif: "1", sube: "A", cinsiyet: "E", veliTelefon: "", veliAd: "" });
-    setFormAcik(false);
+    
+    // Firebase Firestore'a arka planda kaydet
+    await saveOgrenci(olusturulan);
   };
 
   const startEdit = (ogr: Ogrenci) => {
@@ -104,8 +108,8 @@ export default function SinifListesiPage() {
 
   const guncelle = async () => {
     if (!duzenlenecekOgrenci) return;
-    if (!duzenleAdSoyad.trim() || !duzenlenecekOgrenci.numara.trim()) {
-      alert("Ad Soyad ve numara zorunludur!");
+    if (!duzenleAdSoyad.trim()) {
+      alert("Ad Soyad zorunludur!");
       return;
     }
     const { ad, soyad } = parseAdSoyad(duzenleAdSoyad);
@@ -114,6 +118,7 @@ export default function SinifListesiPage() {
       ...duzenlenecekOgrenci,
       ad,
       soyad,
+      numara: (duzenlenecekOgrenci.numara || "").trim(),
     });
     setDuzenlenecekOgrenci(null);
   };
@@ -319,12 +324,12 @@ export default function SinifListesiPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Okul Numarası *</label>
+                <label className="block text-xs font-semibold text-[var(--muted-foreground)] mb-1">Okul Numarası</label>
                 <input
                   type="text"
                   value={yeniOgrenci.numara}
                   onChange={(e) => setYeniOgrenci({ ...yeniOgrenci, numara: e.target.value })}
-                  placeholder="Örn: 105"
+                  placeholder="Örn: 105 (İsteğe bağlı)"
                   className="w-full px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] focus:ring-2 focus:ring-[var(--ring)]"
                 />
               </div>
