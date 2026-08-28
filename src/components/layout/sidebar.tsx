@@ -110,41 +110,12 @@ export default function Sidebar() {
             const currentNorm = (pathname || "/").replace(/\/+$/, "") || "/";
             const itemNorm = (item.href || "/").replace(/\/+$/, "") || "/";
             const isActive = currentNorm === itemNorm || (itemNorm !== "/" && currentNorm.startsWith(itemNorm));
-            const requiresPro = !freeRoutes.some((fr) => (fr.replace(/\/+$/, "") || "/") === itemNorm);
-            // loading süresince kilitleme: Firebase/localStorage henüz yüklenmemiş olabilir
-            const isLocked = requiresPro && !isPro && !loading;
-
-            if (isLocked) {
-              return (
-                <button
-                  key={item.href}
-                  type="button"
-                  onClick={() => {
-                    openProModal(item.label);
-                    setTimeout(() => setIsOpen(false), 150);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/10 dark:border-indigo-500/15 opacity-70 hover:opacity-100 hover:bg-amber-500/15 hover:border-amber-500/30 backdrop-blur-sm sidebar-nav-link touch-manipulation cursor-pointer text-left active:scale-[0.98]"
-                >
-                  <span className="text-lg grayscale group-hover:grayscale-0 transition-all">
-                    {item.icon}
-                  </span>
-                  <span className="truncate font-bold sidebar-nav-link group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                    {item.label}
-                  </span>
-                  <span className="ml-auto px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1 shadow-sm group-hover:scale-105 transition-transform">
-                    <span>🔒</span>
-                    <span>PRO</span>
-                  </span>
-                </button>
-              );
-            }
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setTimeout(() => setIsOpen(false), 150)}
-                prefetch={false}
+                onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"

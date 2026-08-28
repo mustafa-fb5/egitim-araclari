@@ -20,29 +20,5 @@ const pageNameMap: Record<string, string> = {
 };
 
 export default function RouteGuard({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const { isPro, loading } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const normalizedPath = (pathname || "/").replace(/\/+$/, "") || "/";
-  const isFree = freeRoutes.some((route) => {
-    const norm = route.replace(/\/+$/, "") || "/";
-    return norm === normalizedPath;
-  });
-
-  // İstemci tarafında mount olana kadar veya ücretsiz sayfadaysa render et
-  if (!mounted || isFree || isPro || loading) {
-    return <>{children}</>;
-  }
-
-  // Aksi halde Pro kilidini göster
-  const featureKey = Object.keys(pageNameMap).find(
-    (key) => key.replace(/\/+$/, "") === normalizedPath
-  );
-  const featureName = (featureKey ? pageNameMap[featureKey] : undefined) || "Bu Özellik";
-  return <ProGuard featureName={featureName}>{children}</ProGuard>;
+  return <>{children}</>;
 }
