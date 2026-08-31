@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -26,6 +26,7 @@ export const defaultMenuItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [iletisimAcik, setIletisimAcik] = useState(false);
   const { isPro, isAdmin, loading, openProModal } = useAuth();
@@ -34,6 +35,7 @@ export default function Sidebar() {
   useEffect(() => {
     setIsOpen(false);
   }, [pathname]);
+
 
   // Mobil menü açıkken arka plan kaydırmasını engelle
   useEffect(() => {
@@ -112,10 +114,23 @@ export default function Sidebar() {
             const isActive = currentNorm === itemNorm || (itemNorm !== "/" && currentNorm.startsWith(itemNorm));
 
             return (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  setIsOpen(false);
+                  // Client-side navigation dene, başarısız olursa tam yükleme otomatik olur (a tag)
+                  e.preventDefault();
+                  router.push(item.href);
+                  // 400ms sonra hâlâ aynı sayfadaysak, tam sayfa yönlendirmesi yap
+                  const beforePath = window.location.pathname.replace(/\/+$/, "") || "/";
+                  setTimeout(() => {
+                    const afterPath = window.location.pathname.replace(/\/+$/, "") || "/";
+                    if (afterPath === beforePath && itemNorm !== beforePath) {
+                      window.location.href = item.href;
+                    }
+                  }, 400);
+                }}
                 className={`flex items-center gap-3 px-4 py-3.5 sm:py-3 rounded-xl text-sm font-bold transition-all duration-200 group border touch-manipulation active:scale-[0.98] cursor-pointer ${
                   isActive
                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 border-indigo-400/40 scale-[1.02]"
@@ -131,17 +146,28 @@ export default function Sidebar() {
                 {isActive && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white animate-pulse shadow-sm" />
                 )}
-              </Link>
+              </a>
             );
           })}
+
 
           {/* Sadece Yönetici Giriş Yapmışsa Görünür */}
           {isAdmin && (
             <div className="pt-2">
-              <Link
+              <a
                 href="/admin"
-                prefetch={false}
-                onClick={() => setIsOpen(false)}
+                onClick={(e) => {
+                  setIsOpen(false);
+                  e.preventDefault();
+                  router.push("/admin");
+                  const beforePath = window.location.pathname.replace(/\/+$/, "") || "/";
+                  setTimeout(() => {
+                    const afterPath = window.location.pathname.replace(/\/+$/, "") || "/";
+                    if (afterPath === beforePath && "/admin" !== beforePath) {
+                      window.location.href = "/admin";
+                    }
+                  }, 400);
+                }}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all duration-200 border ${
                   pathname === "/admin"
                     ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400 scale-[1.02]"
@@ -153,7 +179,7 @@ export default function Sidebar() {
                 <span className="ml-auto text-[10px] bg-amber-500/30 text-white px-1.5 py-0.5 rounded font-black">
                   ADMİN
                 </span>
-              </Link>
+              </a>
             </div>
           )}
         </nav>

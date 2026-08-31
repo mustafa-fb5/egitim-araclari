@@ -42,7 +42,7 @@ export default function RootLayout({
       <body className="min-h-full bg-[var(--background)] relative" suppressHydrationWarning>
         <AuthProvider>
           <FloatingBubbles />
-          <div className="flex min-h-screen relative z-10">
+          <div className="flex min-h-screen">
             <Sidebar />
             <div className="flex-1 lg:ml-72 flex flex-col min-h-screen">
               <Header />
