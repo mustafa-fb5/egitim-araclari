@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -161,14 +162,14 @@ export default function Header() {
 
                     {/* Admin Paneli Butonu (Sadece Admin) */}
                     {isAdmin && (
-                      <a
+                      <Link
                         href="/admin"
                         onClick={() => setDropdownOpen(false)}
                         className="w-full py-2 px-3 rounded-xl text-xs font-extrabold bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500 hover:text-white transition-all flex items-center justify-center gap-1.5 border border-amber-500/30"
                       >
                         <span>👑</span>
                         <span>Yönetici Paneline Git</span>
-                      </a>
+                      </Link>
                     )}
 
                     <div className="pt-1 border-t border-[var(--border)]">

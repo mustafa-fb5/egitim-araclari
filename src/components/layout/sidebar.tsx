@@ -140,8 +140,8 @@ export default function Sidebar() {
             <div className="pt-2">
               <Link
                 href="/admin"
-                prefetch={true}
-                onClick={() => setTimeout(() => setIsOpen(false), 150)}
+                prefetch={false}
+                onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-black transition-all duration-200 border ${
                   pathname === "/admin"
                     ? "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-lg shadow-amber-500/30 border-amber-400 scale-[1.02]"
