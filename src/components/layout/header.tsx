@@ -19,7 +19,8 @@ const pageTitles: Record<string, { title: string; description: string }> = {
   "/ders-programi": { title: "Ders Programı", description: "Haftalık ders programı düzenleyin" },
   "/nobet-cizelgesi": { title: "Nöbet Çizelgesi", description: "Öğretmen haftalık nöbet programı" },
   "/ogrenci-basari-grafikleri": { title: "Başarı Grafikleri", description: "Öğrenci başarı trendleri ve grafikleri" },
-  "/risk-analizi": { title: "Risk & Erken Uyarı", description: "Çapraz veri analiziyle öğrenci risk ve başarı takibi" },
+  "/risk-analizi": { title: "Risk Analizi", description: "Çapraz veri analiziyle öğrenci risk ve başarı takibi" },
+  "/oturma-plani": { title: "Oturma Planı", description: "Akıllı algoritmalarla pedagojik sınıf oturma düzeni" },
   "/aidat-takip": { title: "Aidat Takip", description: "Öğrenci aylık aidat ödemeleri ve Excel raporu" },
   "/admin": { title: "👑 Yönetici Paneli", description: "Kullanıcı yönetimi ve Pro üyelik kontrolü" },
 };

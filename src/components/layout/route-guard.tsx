@@ -16,7 +16,8 @@ const pageNameMap: Record<string, string> = {
   "/ders-programi": "Ders Programı",
   "/nobet-cizelgesi": "Nöbet Çizelgesi",
   "/ogrenci-basari-grafikleri": "Başarı Grafikleri",
-  "/risk-analizi": "Risk & Erken Uyarı",
+  "/risk-analizi": "Risk Analizi",
+  "/oturma-plani": "Oturma Planı",
   "/aidat-takip": "Aidat Takip",
 };
 

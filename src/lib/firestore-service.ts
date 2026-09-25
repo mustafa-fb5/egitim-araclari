@@ -860,3 +860,70 @@ export async function savePersonel(personel: PersonelData): Promise<void> {
 export async function deletePersonel(id: number | string): Promise<void> {
   await deleteDoc(userDoc(PERSONEL_COL, String(id)));
 }
+
+// ==============================
+// 10. AKILLI OTURMA PLANI (Kullanıcıya Özel)
+// ==============================
+
+const OTURMA_PLANI_COL = "oturma_planlari";
+
+export interface OturmaPlaniVerisi {
+  id: string; // sinif-sube örn: "8A"
+  sinif: string;
+  sube: string;
+  duzenTipi: "ikili" | "tekli" | "u_duzeni";
+  siraSayisi: number;
+  sutunSayisi: number;
+  // siraIndex -> [ogrenciId, ogrenciId] (ikili) veya [ogrenciId] (tekli)
+  yerlesim: Record<number, (number | null)[]>;
+  ozelKurallar?: {
+    ayriOturacaklar?: [number, number][];
+    onSiradaOturacaklar?: number[];
+  };
+  guncellenmeTarihi?: string;
+}
+
+export function subscribeOturmaPlani(sinifSubeKey: string, callback: (data: OturmaPlaniVerisi | null) => void) {
+  const cacheKey = userCacheKey(`egitim_oturma_plani_${sinifSubeKey}`);
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) callback(JSON.parse(cached));
+    } catch {
+      // ignore
+    }
+  }
+
+  return onSnapshot(userDoc(OTURMA_PLANI_COL, sinifSubeKey), (snap) => {
+    if (snap.exists()) {
+      const data = snap.data() as OturmaPlaniVerisi;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {
+          // ignore
+        }
+      }
+      callback(data);
+    } else {
+      callback(null);
+    }
+  }, (err) => {
+    console.warn("Firestore oturma plani subscription error:", err);
+  });
+}
+
+export async function saveOturmaPlani(data: OturmaPlaniVerisi): Promise<void> {
+  const cacheKey = userCacheKey(`egitim_oturma_plani_${data.id}`);
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify(data));
+    } catch {
+      // ignore
+    }
+  }
+  await setDoc(userDoc(OTURMA_PLANI_COL, data.id), {
+    ...data,
+    guncellenmeTarihi: new Date().toISOString(),
+  });
+}

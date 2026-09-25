@@ -20,7 +20,8 @@ export const defaultMenuItems = [
   { href: "/ders-programi", label: "Ders Programı", icon: "📅" },
   { href: "/nobet-cizelgesi", label: "Nöbet Çizelgesi", icon: "🔄" },
   { href: "/ogrenci-basari-grafikleri", label: "Başarı Grafikleri", icon: "📉" },
-  { href: "/risk-analizi", label: "Risk & Erken Uyarı", icon: "🧠" },
+  { href: "/risk-analizi", label: "Risk Analizi", icon: "🧠" },
+  { href: "/oturma-plani", label: "Oturma Planı", icon: "🪑" },
   { href: "/aidat-takip", label: "Aidat Takip", icon: "💰" },
   { href: "/personel-listesi", label: "Personel Listesi", icon: "👥" },
 ];

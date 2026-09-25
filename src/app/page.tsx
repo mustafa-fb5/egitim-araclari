@@ -100,10 +100,18 @@ const tools = [
   {
     href: "/risk-analizi",
     icon: "🧠",
-    title: "Risk & Erken Uyarı",
+    title: "Risk Analizi",
     description: "Devamsızlık, notlar ve deneme netlerini çapraz analiz ederek risk altındaki öğrencileri erkenden yakalayın.",
     color: "from-rose-500 via-amber-600 to-indigo-600",
-    span: "md:col-span-2",
+    span: "",
+  },
+  {
+    href: "/oturma-plani",
+    icon: "🪑",
+    title: "Oturma Planı",
+    description: "Kız-erkek dengesi veya numara sırasına göre akıllı pedagojik sınıf oturma düzeni oluşturun ve yazdırın.",
+    color: "from-teal-600 via-emerald-600 to-cyan-700",
+    span: "",
   },
   {
     href: "/aidat-takip",
