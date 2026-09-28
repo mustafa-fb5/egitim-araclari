@@ -54,20 +54,6 @@ function userCacheKey(key: string) {
 
 const OGRENCILER_COL = "ogrenciler";
 
-export function getInitialOgrenciler(): Ogrenci[] {
-  if (typeof window !== "undefined") {
-    try {
-      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return demoOgrenciler.slice(0, 4);
-}
 
 export function getInitialPersoneller(): PersonelData[] {
   if (typeof window !== "undefined") {
@@ -101,96 +87,135 @@ export async function fetchOgrenciler(): Promise<Ogrenci[]> {
   }
 }
 
-export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
-  let lastSentJson = "";
+// Global aktif öğrenci dinleyicileri (Sekme ve bileşenler arası anlık senkronizasyon)
+const ogrenciSubscribers = new Set<(ogrenciler: Ogrenci[]) => void>();
 
-  const getCachedData = (): Ogrenci[] => {
-    if (typeof window === "undefined") return [];
+function notifyOgrenciSubscribers(list: Ogrenci[]) {
+  ogrenciSubscribers.forEach((cb) => {
     try {
-      const cached = localStorage.getItem(userCacheKey("egitim_ogrenciler_cache"));
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    return [];
-  };
-
-  // 1. Varsa önbellekteki veriyi hemen aktar
-  const initialCache = getCachedData();
-  if (initialCache.length > 0) {
-    lastSentJson = JSON.stringify(initialCache);
-    callback(initialCache);
-  } else if (getActiveUserUid() === "guest") {
-    const demo = demoOgrenciler.slice(0, 4);
-    lastSentJson = JSON.stringify(demo);
-    callback(demo);
-  }
-
-  // 2. Firestore gerçek zamanlı dinleyici
-  return onSnapshot(userCol(OGRENCILER_COL), (snap) => {
-    const list: Ogrenci[] = [];
-    snap.forEach((d) => list.push(d.data() as Ogrenci));
-    list.sort((a, b) => Number(a.numara) - Number(b.numara));
-    
-    // Eğer Firestore'da veri varsa onu kullan
-    let finalResult = list;
-    if (list.length === 0) {
-      // Bulutta henüz veri yoksa veya yüklenmediyse yerel önbelleğe bak
-      const local = getCachedData();
-      if (local.length > 0) {
-        finalResult = local;
-      } else if (getActiveUserUid() === "guest") {
-        finalResult = demoOgrenciler.slice(0, 4);
-      }
-    }
-
-    const json = JSON.stringify(finalResult);
-    if (json === lastSentJson) return;
-    lastSentJson = json;
-
-    if (typeof window !== "undefined" && finalResult.length > 0) {
-      try {
-        localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
-      } catch {
-        // ignore
-      }
-    }
-    
-    callback(finalResult);
-  }, (err) => {
-    console.warn("Firestore subscription warning (offline or guest):", err);
-    // Hata durumunda yerel önbellekteki mevcut veriyi koru, asla silme
-    const local = getCachedData();
-    const fallback = local.length > 0 ? local : (getActiveUserUid() === "guest" ? demoOgrenciler.slice(0, 4) : []);
-    const json = JSON.stringify(fallback);
-    if (json !== lastSentJson) {
-      lastSentJson = json;
-      callback(fallback);
+      cb(list);
+    } catch (e) {
+      console.warn("Subscriber notify error:", e);
     }
   });
 }
 
+function getLocalOgrenciler(): Ogrenci[] {
+  if (typeof window === "undefined") return demoOgrenciler.slice(0, 4);
+  try {
+    // 1. Önce aktif kullanıcının kendi önbelleğine bak
+    const userKey = userCacheKey("egitim_ogrenciler_cache");
+    const userCached = localStorage.getItem(userKey);
+    if (userCached) {
+      const parsed = JSON.parse(userCached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+
+    // 2. Eğer kullanıcı giriş yapmış ama henüz bulut verisi yoksa, genel/misafir önbelleğine bak (veri kaybını önler)
+    const fallbackKey = "egitim_ogrenciler_cache";
+    const fallbackCached = localStorage.getItem(fallbackKey);
+    if (fallbackCached) {
+      const parsed = JSON.parse(fallbackCached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+
+    // 3. Hiçbir kayıt yoksa demo öğrencileri döndür
+    return demoOgrenciler.slice(0, 4);
+  } catch {
+    return demoOgrenciler.slice(0, 4);
+  }
+}
+
+export function getInitialOgrenciler(): Ogrenci[] {
+  return getLocalOgrenciler();
+}
+
+export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
+  let lastSentJson = "";
+  ogrenciSubscribers.add(callback);
+
+  // 1. Varsa yerel önbellekteki veriyi anında ver (0ms gecikme)
+  const initial = getLocalOgrenciler();
+  lastSentJson = JSON.stringify(initial);
+  callback(initial);
+
+  // 2. Firestore gerçek zamanlı dinleyici
+  const unsubscribeFirestore = onSnapshot(
+    userCol(OGRENCILER_COL),
+    (snap) => {
+      const list: Ogrenci[] = [];
+      snap.forEach((d) => list.push(d.data() as Ogrenci));
+      list.sort((a, b) => Number(a.numara) - Number(b.numara));
+
+      // Eğer bulutta öğrenci kayıtları varsa, en güncel kaynak buluttur
+      let finalResult: Ogrenci[];
+      if (list.length > 0) {
+        finalResult = list;
+      } else {
+        // Bulut koleksiyonu henüz boşsa veya yeni açılmışsa, yerel veriyi koru ve ezme!
+        const local = getLocalOgrenciler();
+        finalResult = local;
+      }
+
+      const json = JSON.stringify(finalResult);
+      if (json !== lastSentJson) {
+        lastSentJson = json;
+        if (typeof window !== "undefined" && finalResult.length > 0) {
+          try {
+            localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
+            localStorage.setItem("egitim_ogrenciler_cache", json); // genel yedek
+          } catch {
+            // ignore
+          }
+        }
+        callback(finalResult);
+      }
+    },
+    (err) => {
+      console.warn("Firestore subscription warning (offline or guest):", err);
+      // Hata durumunda yerel veriyi koru
+      const local = getLocalOgrenciler();
+      const json = JSON.stringify(local);
+      if (json !== lastSentJson) {
+        lastSentJson = json;
+        callback(local);
+      }
+    }
+  );
+
+  return () => {
+    ogrenciSubscribers.delete(callback);
+    unsubscribeFirestore();
+  };
+}
+
 export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
-  const cacheKey = userCacheKey("egitim_ogrenciler_cache");
+  const currentList = getLocalOgrenciler();
+  const idx = currentList.findIndex((o) => o.id === ogrenci.id);
+  let updatedList: Ogrenci[];
+  if (idx >= 0) {
+    updatedList = [...currentList];
+    updatedList[idx] = ogrenci;
+  } else {
+    updatedList = [...currentList, ogrenci];
+  }
+  updatedList.sort((a, b) => Number(a.numara) - Number(b.numara));
+
+  // 1. Yerel önbelleğe anında yaz (Kullanıcı asla beklemez ve veri kaybolmaz)
   if (typeof window !== "undefined") {
     try {
-      const cached = localStorage.getItem(cacheKey);
-      let list: Ogrenci[] = cached ? JSON.parse(cached) : [];
-      const idx = list.findIndex((o) => o.id === ogrenci.id);
-      if (idx >= 0) {
-        list[idx] = ogrenci;
-      } else {
-        list.push(ogrenci);
-      }
-      localStorage.setItem(cacheKey, JSON.stringify(list));
+      const json = JSON.stringify(updatedList);
+      localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
+      localStorage.setItem("egitim_ogrenciler_cache", json); // genel yedek
     } catch {
       // ignore
     }
   }
-  
+
+  // 2. Tüm aktif bileşenleri (sayfaları) anında haberdar et
+  notifyOgrenciSubscribers(updatedList);
+
+  // 3. Firestore'a arka planda kaydet
   try {
     await setDoc(userDoc(OGRENCILER_COL, String(ogrenci.id)), ogrenci);
   } catch (error) {
@@ -199,20 +224,29 @@ export async function saveOgrenci(ogrenci: Ogrenci): Promise<void> {
 }
 
 export async function deleteOgrenci(ogrenciId: number): Promise<void> {
+  const currentList = getLocalOgrenciler();
+  const updatedList = currentList.filter((o) => o.id !== ogrenciId);
+
+  // 1. Yerel önbellekten anında sil
   if (typeof window !== "undefined") {
     try {
-      const cacheKey = userCacheKey("egitim_ogrenciler_cache");
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        let list: Ogrenci[] = JSON.parse(cached);
-        list = list.filter((o) => o.id !== ogrenciId);
-        localStorage.setItem(cacheKey, JSON.stringify(list));
-      }
+      const json = JSON.stringify(updatedList);
+      localStorage.setItem(userCacheKey("egitim_ogrenciler_cache"), json);
+      localStorage.setItem("egitim_ogrenciler_cache", json);
     } catch {
       // ignore
     }
   }
-  await deleteDoc(userDoc(OGRENCILER_COL, String(ogrenciId)));
+
+  // 2. Tüm dinleyicileri haberdar et
+  notifyOgrenciSubscribers(updatedList);
+
+  // 3. Firestore'dan arka planda sil
+  try {
+    await deleteDoc(userDoc(OGRENCILER_COL, String(ogrenciId)));
+  } catch (error) {
+    console.warn("Firestore deleteOgrenci error, removed locally:", error);
+  }
 }
 
 // ==============================
