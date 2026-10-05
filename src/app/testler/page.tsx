@@ -195,6 +195,9 @@ export default function TestlerPage() {
   const [analizOgrenciId, setAnalizOgrenciId] = useState<number | null>(null);
   const [analizDersFiltre, setAnalizDersFiltre] = useState<"tum" | DersId>("tum");
 
+  // Önizleme Modalı State'i
+  const [onizlemeModalAcik, setOnizlemeModalAcik] = useState(false);
+
   // İsim analizi açma fonksiyonu
   const isimAnaliziAc = (ogrId?: number) => {
     if (ogrId) {
@@ -526,13 +529,24 @@ export default function TestlerPage() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => testSil(aktifTest.id)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5"
-                  >
-                    <span>🗑️</span>
-                    <span>Testi Sil</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setOnizlemeModalAcik(true)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 hover:scale-105 transition-all flex items-center gap-2 cursor-pointer"
+                      title="Test sonuçlarını önizleme tablosu olarak görüntüle"
+                    >
+                      <span>👁️</span>
+                      <span>Sonuçları Önizle</span>
+                    </button>
+
+                    <button
+                      onClick={() => testSil(aktifTest.id)}
+                      className="px-3 py-2 rounded-xl text-xs font-bold bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center gap-1.5"
+                    >
+                      <span>🗑️</span>
+                      <span>Testi Sil</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -987,6 +1001,239 @@ export default function TestlerPage() {
                 Kapat
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* TEST SONUÇLARI ÖNİZLEME MODALI                                */}
+      {/* ============================================================ */}
+      {onizlemeModalAcik && aktifTest && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+          <div className="glass-card rounded-3xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
+            
+            {/* Modal Üst Başlık */}
+            <div className={`p-5 sm:p-6 border-b border-[var(--border)] bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent flex items-center justify-between gap-4`}>
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/25 shrink-0">
+                  {dersInfo(aktifTest.ders).emoji}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-indigo-600 text-white uppercase tracking-wider">
+                      {dersInfo(aktifTest.ders).label}
+                    </span>
+                    <span className="text-xs font-bold text-[var(--muted-foreground)]">
+                      📅 {new Date(aktifTest.tarih).toLocaleDateString("tr-TR")}
+                    </span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                      {secilenSinif}-{secilenSube} Sınıfı
+                    </span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-[var(--foreground)] mt-1 tracking-tight">
+                    {aktifTest.konuBasligi} — Sonuç Tablosu
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] hover:border-indigo-500 transition-all"
+                  title="Yazdır"
+                >
+                  <span>🖨️</span>
+                  <span>Yazdır</span>
+                </button>
+                <button
+                  onClick={() => setOnizlemeModalAcik(false)}
+                  className="w-10 h-10 rounded-2xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-red-500 hover:border-red-500/50 transition-all font-black text-lg"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Özet Kartları */}
+            {(() => {
+              const doluKayitlar = filtrelenmisOgrenciler
+                .filter((o) => {
+                  const k = kayitlar[o.id];
+                  return k && (k.dogru !== "" || k.yanlis !== "");
+                })
+                .map((o) => {
+                  const k = kayitlar[o.id];
+                  return {
+                    ogrenci: o,
+                    dogru: Number(k.dogru) || 0,
+                    yanlis: Number(k.yanlis) || 0,
+                    bos: Number(k.bos) || 0,
+                    net: netHesapla(k.dogru, k.yanlis),
+                  };
+                });
+
+              const netler = doluKayitlar.map((d) => d.net);
+              const ortalama = netler.length > 0 ? (netler.reduce((a, b) => a + b, 0) / netler.length) : 0;
+              const enYuksek = netler.length > 0 ? Math.max(...netler) : 0;
+              const enDusuk = netler.length > 0 ? Math.min(...netler) : 0;
+
+              return (
+                <div className="p-4 sm:p-5 border-b border-[var(--border)] bg-[var(--background)]/40 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-center">
+                    <p className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider">Katılım</p>
+                    <p className="text-xl sm:text-2xl font-black text-[var(--foreground)] mt-0.5">
+                      {doluKayitlar.length} <span className="text-xs text-[var(--muted-foreground)] font-bold">/ {filtrelenmisOgrenciler.length}</span>
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-center">
+                    <p className="text-[11px] font-bold text-sky-500 uppercase tracking-wider">Sınıf Ortalaması</p>
+                    <p className="text-xl sm:text-2xl font-black text-sky-600 dark:text-sky-400 mt-0.5">
+                      {ortalama.toFixed(2)} <span className="text-xs font-bold">Net</span>
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                    <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-wider">En Yüksek Net</p>
+                    <p className="text-xl sm:text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      {enYuksek.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
+                    <p className="text-[11px] font-bold text-amber-500 uppercase tracking-wider">En Düşük Net</p>
+                    <p className="text-xl sm:text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                      {enDusuk.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Önizleme Tablosu */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="rounded-2xl border border-[var(--border)] overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[var(--background)]/80 border-b border-[var(--border)] text-xs font-extrabold uppercase text-[var(--muted-foreground)] tracking-wider">
+                      <th className="p-3 sm:p-4 text-center w-16">Sıra</th>
+                      <th className="p-3 sm:p-4">Öğrenci Adı Soyadı</th>
+                      <th className="p-3 sm:p-4 text-center w-24">No</th>
+                      <th className="p-3 sm:p-4 text-center text-emerald-600 font-black w-24">✅ Doğru</th>
+                      <th className="p-3 sm:p-4 text-center text-red-500 font-black w-24">❌ Yanlış</th>
+                      <th className="p-3 sm:p-4 text-center text-[var(--muted-foreground)] w-24">⬜ Boş</th>
+                      <th className="p-3 sm:p-4 text-center text-sky-600 font-black w-28">⭐ Net</th>
+                      <th className="p-3 sm:p-4 text-center w-28">Derece</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {siraliOgrenciler.map((ogr, idx) => {
+                      const k = kayitlar[ogr.id];
+                      const hasData = k && (k.dogru !== "" || k.yanlis !== "");
+                      const net = hasData ? netHesapla(k.dogru, k.yanlis) : 0;
+                      const dogru = hasData ? (Number(k.dogru) || 0) : "-";
+                      const yanlis = hasData ? (Number(k.yanlis) || 0) : "-";
+                      const bos = hasData ? (Number(k.bos) || 0) : "-";
+
+                      const dereceRozeti =
+                        idx === 0 && hasData ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-400/20 text-amber-600 dark:text-amber-300 border border-amber-400/40">
+                            🥇 1.lik
+                          </span>
+                        ) : idx === 1 && hasData ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-slate-300/30 text-slate-700 dark:text-slate-200 border border-slate-400/40">
+                            🥈 2.lik
+                          </span>
+                        ) : idx === 2 && hasData ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-orange-500/20 text-orange-600 dark:text-orange-400 border border-orange-500/40">
+                            🥉 3.lük
+                          </span>
+                        ) : hasData ? (
+                          <span className="text-xs font-bold text-[var(--muted-foreground)]">
+                            {idx + 1}. sıra
+                          </span>
+                        ) : (
+                          <span className="text-xs font-medium text-[var(--muted-foreground)] italic">
+                            Girilmedi
+                          </span>
+                        );
+
+                      return (
+                        <tr
+                          key={ogr.id}
+                          className={`border-b border-[var(--border)] transition-colors hover:bg-[var(--background)]/60 ${
+                            idx === 0 && hasData ? "bg-amber-500/5 font-semibold" : ""
+                          }`}
+                        >
+                          <td className="p-3 sm:p-4 text-center">
+                            <span
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-xl text-xs font-black ${
+                                idx === 0 && hasData
+                                  ? "bg-amber-400 text-white shadow-md shadow-amber-400/30"
+                                  : idx === 1 && hasData
+                                  ? "bg-slate-400 text-white shadow-md shadow-slate-400/30"
+                                  : idx === 2 && hasData
+                                  ? "bg-orange-600 text-white shadow-md shadow-orange-600/30"
+                                  : "bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)]"
+                              }`}
+                            >
+                              {idx + 1}
+                            </span>
+                          </td>
+                          <td className="p-3 sm:p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-600 font-black text-xs flex items-center justify-center">
+                                {ogr.ad[0]}{ogr.soyad[0]}
+                              </div>
+                              <span className="font-bold text-sm text-[var(--foreground)]">
+                                {ogr.ad} {ogr.soyad}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3 sm:p-4 text-center text-xs font-bold text-[var(--muted-foreground)]">
+                            {ogr.numara}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center font-bold text-emerald-600 text-sm">
+                            {dogru}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center font-bold text-red-500 text-sm">
+                            {yanlis}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center font-semibold text-[var(--muted-foreground)] text-sm">
+                            {bos}
+                          </td>
+                          <td className="p-3 sm:p-4 text-center">
+                            <span
+                              className={`text-base font-black px-2.5 py-1 rounded-lg ${
+                                hasData
+                                  ? "bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20"
+                                  : "text-[var(--muted-foreground)]"
+                              }`}
+                            >
+                              {hasData ? net.toFixed(2) : "–"}
+                            </span>
+                          </td>
+                          <td className="p-3 sm:p-4 text-center whitespace-nowrap">
+                            {dereceRozeti}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Alt Çubuk */}
+            <div className="p-4 sm:p-5 border-t border-[var(--border)] bg-[var(--background)]/80 flex items-center justify-between gap-3">
+              <span className="text-xs text-[var(--muted-foreground)] hidden sm:inline">
+                ℹ️ Sıralama öğrencilerin <strong>Net</strong> değerine göre büyükten küçüğe otomatik yapılmıştır (3 yanlış = 1 doğru).
+              </span>
+              <button
+                onClick={() => setOnizlemeModalAcik(false)}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20"
+              >
+                Kapat
+              </button>
+            </div>
+
           </div>
         </div>
       )}

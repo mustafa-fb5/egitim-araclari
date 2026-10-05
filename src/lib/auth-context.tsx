@@ -8,6 +8,7 @@ import {
   setDoc,
   collection,
   getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 
 export interface AppUser {
@@ -131,20 +132,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProModalFeature("");
   };
 
-  // Oturumu anında localStorage'dan yükle (0ms)
+  // Oturumu anında localStorage'dan yükle (0ms) ve ardından Firestore ile senkronize et
   useEffect(() => {
+    let savedUser: AppUser | null = null;
     try {
       const saved = localStorage.getItem(SESSION_KEY);
       if (saved) {
-        const parsed: AppUser = JSON.parse(saved);
-        const daysLeft = calculateDaysLeft(parsed.proExpiresAt);
-        const isProValid = parsed.role === "admin" || (parsed.isPro && daysLeft > 0);
-        setUser({ ...parsed, isPro: isProValid, proDaysLeft: daysLeft });
+        savedUser = JSON.parse(saved);
+        if (savedUser) {
+          const daysLeft = calculateDaysLeft(savedUser.proExpiresAt);
+          const isProValid = savedUser.role === "admin" || (Boolean(savedUser.isPro) && daysLeft > 0);
+          setUser({ ...savedUser, isPro: isProValid, proDaysLeft: daysLeft });
+        }
       }
     } catch {
       // ignore
     }
     setLoading(false);
+
+    // Telefon ve PC arasında Pro süresini anlık eşitlemek için Firestore dinleyicisi
+    if (savedUser?.uid && savedUser.role !== "admin") {
+      const unsub = onSnapshot(
+        doc(db, "kullanicilar", savedUser.uid),
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const remoteData = docSnap.data();
+            const daysLeft = calculateDaysLeft(remoteData.proExpiresAt);
+            const isProValid = Boolean(remoteData.isPro) && daysLeft > 0;
+
+            setUser((prev) => {
+              if (!prev) return null;
+              const updated: AppUser = {
+                ...prev,
+                displayName: remoteData.displayName || prev.displayName,
+                role: remoteData.role || prev.role,
+                unvan: remoteData.unvan || prev.unvan,
+                isPro: isProValid,
+                proExpiresAt: remoteData.proExpiresAt || null,
+                proStartedAt: remoteData.proStartedAt || null,
+                proDaysLeft: daysLeft,
+              };
+              try {
+                localStorage.setItem(SESSION_KEY, JSON.stringify(updated));
+                saveLocalUser(updated);
+              } catch {
+                // ignore
+              }
+              return updated;
+            });
+          }
+        },
+        (error) => {
+          console.warn("User Pro sync warning:", error);
+        }
+      );
+
+      return () => unsub();
+    }
   }, []);
 
   const isAdmin = Boolean(
