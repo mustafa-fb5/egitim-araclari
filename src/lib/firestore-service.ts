@@ -152,9 +152,21 @@ export function subscribeOgrenciler(callback: (ogrenciler: Ogrenci[]) => void) {
       if (list.length > 0) {
         finalResult = list;
       } else {
-        // Bulut koleksiyonu henüz boşsa veya yeni açılmışsa, yerel veriyi koru ve ezme!
+        // Bulut koleksiyonu henüz boşsa, kullanıcının yereldeki öğrencilerini Firestore'a yükle (otomatik eşitleme!)
         const local = getLocalOgrenciler();
         finalResult = local;
+        
+        // Eğer yerelde öğrenci varsa ve demo değilse buluta otomatik aktar
+        if (local.length > 0 && typeof window !== "undefined") {
+          const uid = getActiveUserUid();
+          if (uid && uid !== "guest") {
+            local.forEach((ogr) => {
+              setDoc(doc(db, "users", uid, OGRENCILER_COL, String(ogr.id)), ogr).catch((e) => {
+                console.warn("Auto sync ogr to firestore error:", e);
+              });
+            });
+          }
+        }
       }
 
       const json = JSON.stringify(finalResult);
