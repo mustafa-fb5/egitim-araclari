@@ -70,6 +70,7 @@ export default function AidatTakipPage() {
   const [secilenOgrenciId, setSecilenOgrenciId] = useState<number | null>(null);
   const [gorunumModu, setGorunumModu] = useState<"liste" | "detay">("liste");
   const [globalAylikAidat, setGlobalAylikAidat] = usePersistentState("egitim_aidat_global", 200);
+  const [ayDuzenleOgrenciId, setAyDuzenleOgrenciId] = useState<number | null>(null);
 
   // Aidat kayıtları: { [ogrenciId]: OgrenciAidat }
   const [aidatKayitlari, setAidatKayitlari] = usePersistentState<Record<string, OgrenciAidat>>(
@@ -99,12 +100,32 @@ export default function AidatTakipPage() {
   // Öğrenci için aidat kaydı getir (yoksa oluştur)
   const getOgrenciAidat = (ogrenciId: number): OgrenciAidat => {
     if (aidatKayitlari[String(ogrenciId)]) {
-      return aidatKayitlari[String(ogrenciId)];
+      const mevcut = aidatKayitlari[String(ogrenciId)];
+      const defaultTutar = mevcut.aylikAidat || globalAylikAidat;
+      // Eğer aylardan herhangi birinde tutar tanımlı değilse default tutar ata
+      let guncellendi = false;
+      const aylarCopy = { ...mevcut.aylar };
+      for (const ay of AYLAR) {
+        if (!aylarCopy[ay.key as AyKey]) {
+          aylarCopy[ay.key as AyKey] = { tutar: defaultTutar, durum: "bekliyor" };
+          guncellendi = true;
+        } else if (aylarCopy[ay.key as AyKey].tutar === undefined || aylarCopy[ay.key as AyKey].tutar === null) {
+          aylarCopy[ay.key as AyKey] = { ...aylarCopy[ay.key as AyKey], tutar: defaultTutar };
+          guncellendi = true;
+        }
+      }
+      return guncellendi ? { ...mevcut, aylar: aylarCopy } : mevcut;
+    }
+    
+    // Yeni kayıt oluştururken her aya varsayılan tutarı ver
+    const yeniAylar: Record<string, AyOdeme> = {};
+    for (const ay of AYLAR) {
+      yeniAylar[ay.key] = { tutar: globalAylikAidat, durum: "bekliyor" };
     }
     return {
       ogrenciId,
       aylikAidat: globalAylikAidat,
-      aylar: defaultAylar(),
+      aylar: yeniAylar as Record<AyKey, AyOdeme>,
     };
   };
 
@@ -117,7 +138,7 @@ export default function AidatTakipPage() {
     saveAidatKaydi(ogrenciId, aidat as unknown as OgrenciAidatData).catch(console.warn);
   };
 
-  // Ay ödemesi güncelle
+  // Ay ödemesi veya aylık tutar güncelle
   const ayOdemeGuncelle = (
     ogrenciId: number,
     ayKey: AyKey,
@@ -125,12 +146,13 @@ export default function AidatTakipPage() {
     deger: string | number | OdemeDurumu
   ) => {
     const aidat = getOgrenciAidat(ogrenciId);
+    const mevcutAy = aidat.aylar[ayKey] || { tutar: aidat.aylikAidat || globalAylikAidat, durum: "bekliyor" };
     const yeniAylar = {
       ...aidat.aylar,
       [ayKey]: {
-        ...aidat.aylar[ayKey],
+        ...mevcutAy,
         [alan]: deger,
-        ...(alan === "durum" && deger === "odendi" && !aidat.aylar[ayKey].odenmeTarihi
+        ...(alan === "durum" && deger === "odendi" && !mevcutAy.odenmeTarihi
           ? { odenmeTarihi: new Date().toLocaleDateString("tr-TR") }
           : {}),
       },
@@ -138,10 +160,9 @@ export default function AidatTakipPage() {
     setOgrenciAidat(ogrenciId, { ...aidat, aylar: yeniAylar });
   };
 
-  // Aylık aidat tutarı güncelle
+  // Kişiye özel genel aylık aidat tutarı belirle (İstenirse tüm aylara toplu dağıtır)
   const aylikAidatGuncelle = (ogrenciId: number, tutar: number) => {
     const aidat = getOgrenciAidat(ogrenciId);
-    // Tüm aylardaki tutarı da güncelle
     const yeniAylar = { ...aidat.aylar };
     for (const ay of AYLAR) {
       yeniAylar[ay.key as AyKey] = {
@@ -167,15 +188,31 @@ export default function AidatTakipPage() {
     setOgrenciAidat(ogrenciId, { ...aidat, aylar: yeniAylar });
   };
 
-  // İstatistikler
+  // İstatistikler (Her ayın kendi özel tutarını toplayarak hesaplar)
   const ogrenciIstatistik = (ogrenciId: number) => {
     const aidat = getOgrenciAidat(ogrenciId);
-    const aylikTutar = aidat.aylikAidat || globalAylikAidat;
-    const toplam = AYLAR.length * aylikTutar;
-    const odenen = AYLAR.filter((a) => aidat.aylar[a.key as AyKey]?.durum === "odendi").length * aylikTutar;
-    const geciken = AYLAR.filter((a) => aidat.aylar[a.key as AyKey]?.durum === "gecikti").length;
-    const kalan = toplam - odenen;
-    const odenenAySayisi = AYLAR.filter((a) => aidat.aylar[a.key as AyKey]?.durum === "odendi").length;
+    const defaultAylik = aidat.aylikAidat || globalAylikAidat;
+    
+    let toplam = 0;
+    let odenen = 0;
+    let geciken = 0;
+    let odenenAySayisi = 0;
+
+    for (const ay of AYLAR) {
+      const ayData = aidat.aylar[ay.key as AyKey];
+      const ayTutar = (ayData && typeof ayData.tutar === "number" && !isNaN(ayData.tutar)) ? ayData.tutar : defaultAylik;
+      toplam += ayTutar;
+
+      if (ayData?.durum === "odendi") {
+        odenen += ayTutar;
+        odenenAySayisi += 1;
+      } else if (ayData?.durum === "gecikti") {
+        geciken += 1;
+      }
+    }
+
+    const kalan = Math.max(0, toplam - odenen);
+    const aylikTutar = defaultAylik;
     return { toplam, odenen, kalan, geciken, odenenAySayisi, aylikTutar };
   };
 
@@ -635,15 +672,26 @@ export default function AidatTakipPage() {
                         </div>
                       </td>
                       <td className="p-3 text-center">
-                        <button
-                          onClick={() => {
-                            setSecilenOgrenciId(ogr.id);
-                            setGorunumModu("detay");
-                          }}
-                          className="px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all shadow-sm"
-                        >
-                          📋 Detay
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => setAyDuzenleOgrenciId(ogr.id)}
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1"
+                            title="Her ay için ayrı ayrı tutar ve ödeme belirle"
+                          >
+                            <span>📅</span>
+                            <span>Ayları Belirle</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSecilenOgrenciId(ogr.id);
+                              setGorunumModu("detay");
+                            }}
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-all shadow-sm"
+                            title="Tüm detay ve makbuz görünümü"
+                          >
+                            📋 Detay
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -845,6 +893,167 @@ export default function AidatTakipPage() {
           </div>
         )
       )}
+
+      {/* ============================================================ */}
+      {/* AY AY AİDAT TUTARI VE ÖDEME BELİRLEME POPUP MODALI           */}
+      {/* ============================================================ */}
+      {ayDuzenleOgrenciId !== null && (() => {
+        const hedefOgr = ogrenciler.find((o) => o.id === ayDuzenleOgrenciId);
+        if (!hedefOgr) return null;
+        const hedefAidat = getOgrenciAidat(hedefOgr.id);
+        const hedefIst = ogrenciIstatistik(hedefOgr.id);
+
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-5 animate-fade-in">
+            <div className="bg-[var(--card)] rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
+              
+              {/* Modal Başlık */}
+              <div className="p-4 sm:p-5 border-b border-[var(--border)] bg-gradient-to-r from-indigo-500/10 to-transparent flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center text-white font-bold text-sm shrink-0">
+                    {hedefOgr.ad[0]}{hedefOgr.soyad[0]}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base sm:text-lg font-black text-[var(--foreground)] truncate">
+                      {hedefOgr.ad} {hedefOgr.soyad} — Aylık Aidat Planı
+                    </h3>
+                    <p className="text-xs text-[var(--muted-foreground)]">
+                      {hedefOgr.sinif}-{hedefOgr.sube} • No: {hedefOgr.numara} • Her aya farklı tutar girebilirsiniz
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setAyDuzenleOgrenciId(null)}
+                  className="w-8 h-8 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-red-500 transition-all font-bold text-sm shrink-0"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Hızlı Toplu Belirleme Çubuğu */}
+              <div className="p-3 sm:px-5 border-b border-[var(--border)] bg-[var(--background)]/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-[var(--muted-foreground)]">Tüm aylara aynı tutarı uygula:</span>
+                  <input
+                    type="number"
+                    placeholder="₺"
+                    defaultValue={hedefAidat.aylikAidat || globalAylikAidat}
+                    id="topluTutarInput"
+                    className="w-20 px-2 py-1 rounded-lg border border-[var(--border)] bg-[var(--background)] text-center font-bold text-[var(--foreground)]"
+                  />
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById("topluTutarInput") as HTMLInputElement;
+                      const val = Number(input?.value);
+                      if (!isNaN(val) && val >= 0) {
+                        aylikAidatGuncelle(hedefOgr.id, val);
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all"
+                  >
+                    Uygula
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => tumunuOdendi(hedefOgr.id)}
+                  className="px-3 py-1 rounded-lg bg-emerald-500 text-white font-bold hover:bg-emerald-600 transition-all"
+                >
+                  ✅ Tümünü Ödendi Yap
+                </button>
+              </div>
+
+              {/* Ay Ay Tutar ve Durum Tablosu */}
+              <div className="flex-1 overflow-y-auto p-3 sm:p-5">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[var(--border)] text-xs font-bold text-[var(--muted-foreground)] uppercase pb-2">
+                      <th className="py-2 px-3">Ay</th>
+                      <th className="py-2 px-3 text-center">Ödenecek Tutar (₺)</th>
+                      <th className="py-2 px-3 text-center">Durum</th>
+                      <th className="py-2 px-3 text-center">Hızlı İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border)]">
+                    {AYLAR.map((ay) => {
+                      const ayObj = hedefAidat.aylar[ay.key as AyKey] || { tutar: hedefAidat.aylikAidat || globalAylikAidat, durum: "bekliyor" as OdemeDurumu };
+                      const ayTutar = (ayObj && typeof ayObj.tutar === "number") ? ayObj.tutar : (hedefAidat.aylikAidat || globalAylikAidat);
+
+                      return (
+                        <tr key={ay.key} className="hover:bg-[var(--background)]/50 transition-colors">
+                          <td className="py-2.5 px-3 font-bold text-sm text-[var(--foreground)]">
+                            {ay.label}
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <div className="inline-flex items-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                value={ayTutar}
+                                onChange={(e) => ayOdemeGuncelle(hedefOgr.id, ay.key as AyKey, "tutar", Number(e.target.value))}
+                                className="w-24 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--background)] text-center text-sm font-bold text-[var(--foreground)] focus:ring-2 focus:ring-indigo-500"
+                              />
+                              <span className="text-xs text-[var(--muted-foreground)]">₺</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            <select
+                              value={ayObj.durum}
+                              onChange={(e) => ayOdemeGuncelle(hedefOgr.id, ay.key as AyKey, "durum", e.target.value as OdemeDurumu)}
+                              className="px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--background)] text-xs font-semibold text-[var(--foreground)]"
+                            >
+                              <option value="bekliyor">🕐 Bekliyor</option>
+                              <option value="odendi">✅ Ödendi</option>
+                              <option value="gecikti">⏰ Gecikti</option>
+                            </select>
+                          </td>
+                          <td className="py-2 px-3 text-center">
+                            {ayObj.durum === "odendi" ? (
+                              <button
+                                onClick={() => {
+                                  ayOdemeGuncelle(hedefOgr.id, ay.key as AyKey, "durum", "bekliyor");
+                                  ayOdemeGuncelle(hedefOgr.id, ay.key as AyKey, "odenmeTarihi", "");
+                                }}
+                                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-red-500/10 text-red-600 hover:bg-red-500 hover:text-white transition-all"
+                              >
+                                ✕ İptal Et
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => ayOdemeGuncelle(hedefOgr.id, ay.key as AyKey, "durum", "odendi")}
+                                className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500 hover:text-white transition-all"
+                              >
+                                ✓ Ödendi
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Modal Alt Özet */}
+              <div className="p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--background)]/80 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 sm:gap-6 font-bold">
+                  <span className="text-[var(--foreground)]">Toplam: <strong className="text-indigo-600">{hedefIst.toplam.toLocaleString("tr-TR")} ₺</strong></span>
+                  <span className="text-emerald-600">Ödenen: <strong>{hedefIst.odenen.toLocaleString("tr-TR")} ₺</strong></span>
+                  <span className="text-amber-500">Kalan: <strong>{hedefIst.kalan.toLocaleString("tr-TR")} ₺</strong></span>
+                </div>
+                <button
+                  onClick={() => setAyDuzenleOgrenciId(null)}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 transition-all text-xs"
+                >
+                  Tamamla
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
