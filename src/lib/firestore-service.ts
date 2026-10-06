@@ -698,6 +698,7 @@ export interface AyOdemeData {
 
 export interface OgrenciAidatData {
   ogrenciId: number;
+  toplamAidat?: number;
   aylikAidat: number;
   aylar: Record<string, AyOdemeData>;
 }
