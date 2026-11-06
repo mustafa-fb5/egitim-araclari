@@ -13,28 +13,35 @@ import {
   type DenemeYazilisiNotlar,
 } from "@/lib/firestore-service";
 
+// ============================================================
+// DERS TANIMLARI (6 Temel Ders)
+// ============================================================
+export type DenemeDersId = keyof DenemeYazilisiNotlar; // "turkce" | "matematik" | "fen" | "sosyal" | "ingilizce" | "din"
+
 interface DersConfig {
-  id: keyof DenemeYazilisiNotlar;
+  id: DenemeDersId;
   label: string;
   emoji: string;
   bgLight: string;
   borderLight: string;
   textCol: string;
-  badgeBg: string;
+  activeBtnClass: string;
 }
 
 const DERSLER: DersConfig[] = [
-  { id: "turkce", label: "Türkçe", emoji: "📖", bgLight: "bg-blue-500/10", borderLight: "border-blue-500/30", textCol: "text-blue-500", badgeBg: "bg-blue-500" },
-  { id: "matematik", label: "Matematik", emoji: "🔢", bgLight: "bg-indigo-500/10", borderLight: "border-indigo-500/30", textCol: "text-indigo-500", badgeBg: "bg-indigo-500" },
-  { id: "fen", label: "Fen Bilgisi", emoji: "🔬", bgLight: "bg-teal-500/10", borderLight: "border-teal-500/30", textCol: "text-teal-500", badgeBg: "bg-teal-500" },
-  { id: "sosyal", label: "Sosyal Bilgiler", emoji: "🌍", bgLight: "bg-amber-500/10", borderLight: "border-amber-500/30", textCol: "text-amber-500", badgeBg: "bg-amber-500" },
-  { id: "ingilizce", label: "İngilizce", emoji: "🇬🇧", bgLight: "bg-emerald-500/10", borderLight: "border-emerald-500/30", textCol: "text-emerald-500", badgeBg: "bg-emerald-500" },
-  { id: "din", label: "Din Kültürü", emoji: "🕌", bgLight: "bg-rose-500/10", borderLight: "border-rose-500/30", textCol: "text-rose-500", badgeBg: "bg-rose-500" },
+  { id: "turkce",    label: "Türkçe",         emoji: "📖", bgLight: "bg-blue-500/10",    borderLight: "border-blue-500/30",    textCol: "text-blue-500",    activeBtnClass: "bg-blue-600 text-white shadow-blue-500/25 border-blue-600" },
+  { id: "matematik", label: "Matematik",      emoji: "🔢", bgLight: "bg-indigo-500/10",  borderLight: "border-indigo-500/30",  textCol: "text-indigo-500",  activeBtnClass: "bg-indigo-600 text-white shadow-indigo-500/25 border-indigo-600" },
+  { id: "fen",       label: "Fen Bilgisi",    emoji: "🔬", bgLight: "bg-teal-500/10",    borderLight: "border-teal-500/30",    textCol: "text-teal-500",    activeBtnClass: "bg-teal-600 text-white shadow-teal-500/25 border-teal-600" },
+  { id: "sosyal",    label: "Sosyal Bilgiler",emoji: "🌍", bgLight: "bg-amber-500/10",   borderLight: "border-amber-500/30",   textCol: "text-amber-500",   activeBtnClass: "bg-amber-500 text-white shadow-amber-500/25 border-amber-500" },
+  { id: "ingilizce", label: "İngilizce",      emoji: "🇬🇧", bgLight: "bg-emerald-500/10", borderLight: "border-emerald-500/30", textCol: "text-emerald-500", activeBtnClass: "bg-emerald-600 text-white shadow-emerald-500/25 border-emerald-600" },
+  { id: "din",       label: "Din Kültürü",    emoji: "🕌", bgLight: "bg-rose-500/10",    borderLight: "border-rose-500/30",    textCol: "text-rose-500",    activeBtnClass: "bg-rose-600 text-white shadow-rose-500/25 border-rose-600" },
 ];
 
 export default function DenemeYazilisiPage() {
+  // Sınıf, Şube ve Aktif Ders (Kalıcı)
   const [secilenSinif, setSecilenSinif] = usePersistentState("egitim_deneme_yazilisi_sinif", "8");
-  const [secilenSube, setSecilenSube] = usePersistentState("egitim_deneme_yazilisi_sube", "A");
+  const [secilenSube, setSecilenSube]   = usePersistentState("egitim_deneme_yazilisi_sube", "A");
+  const [secilenDers, setSecilenDers]   = usePersistentState<DenemeDersId>("egitim_deneme_yazilisi_secilen_ders", "turkce");
 
   // Öğrenci listesi
   const [ogrenciler, setOgrenciler] = useState<Ogrenci[]>(getInitialOgrenciler);
@@ -73,18 +80,27 @@ export default function DenemeYazilisiPage() {
     [denemeler, aktifDenemeId]
   );
 
+  const seciliDersDetay = useMemo(
+    () => DERSLER.find((d) => d.id === secilenDers) || DERSLER[0],
+    [secilenDers]
+  );
+
   // Yeni Deneme Yazılısı Ekleme Modalı
   const [yeniModalAcik, setYeniModalAcik] = useState(false);
   const [yeniBaslik, setYeniBaslik] = useState("");
   const [yeniTarih, setYeniTarih] = useState(() => new Date().toISOString().split("T")[0]);
 
+  // Önizleme Modalı State'i (Testler bölümündeki gibi)
+  const [onizlemeModalAcik, setOnizlemeModalAcik] = useState(false);
+
   // Arama & Filtreleme
   const [aramaMetni, setAramaMetni] = useState("");
 
-  // Hızlı not girişi yerel state'i (aktif deneme seçili iken debounce veya doğrudan güncelleme için)
+  // Otomatik kaydetme durumu
   const [kayitDurumu, setKayitDurumu] = useState<"idle" | "saving" | "saved">("idle");
   const kaydetZamanlayici = useRef<NodeJS.Timeout | null>(null);
 
+  // Yeni deneme yazılısı oluştur
   const yeniDenemeOlustur = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!yeniBaslik.trim()) {
@@ -115,7 +131,7 @@ export default function DenemeYazilisiPage() {
   };
 
   // Not değişikliği işleyicisi (0-100 kontrolü)
-  const handleNotDegisikligi = (ogrenciId: number, dersId: keyof DenemeYazilisiNotlar, degerStr: string) => {
+  const handleNotDegisikligi = (ogrenciId: number, degerStr: string) => {
     if (!aktifDeneme) return;
 
     let parsedVal: number | "" = "";
@@ -125,18 +141,20 @@ export default function DenemeYazilisiPage() {
       parsedVal = Math.max(0, Math.min(100, num));
     }
 
+    const ogrMevcutNotlar = aktifDeneme.ogrenciNotlari?.[ogrenciId] || {
+      turkce: "",
+      matematik: "",
+      fen: "",
+      sosyal: "",
+      ingilizce: "",
+      din: "",
+    };
+
     const guncelOgrenciNotlari = {
       ...(aktifDeneme.ogrenciNotlari || {}),
       [ogrenciId]: {
-        ...(aktifDeneme.ogrenciNotlari?.[ogrenciId] || {
-          turkce: "",
-          matematik: "",
-          fen: "",
-          sosyal: "",
-          ingilizce: "",
-          din: "",
-        }),
-        [dersId]: parsedVal,
+        ...ogrMevcutNotlar,
+        [secilenDers]: parsedVal,
       },
     };
 
@@ -145,7 +163,7 @@ export default function DenemeYazilisiPage() {
       ogrenciNotlari: guncelOgrenciNotlari,
     };
 
-    // UI'da anında göster
+    // UI'da anında güncelle
     setDenemeler((prev) => prev.map((d) => (d.id === aktifDeneme.id ? guncelDeneme : d)));
     setKayitDurumu("saving");
 
@@ -162,67 +180,23 @@ export default function DenemeYazilisiPage() {
     }, 400);
   };
 
-  // İstatistikler (Aktif deneme için)
-  const istatistikler = useMemo(() => {
-    if (!aktifDeneme) return null;
+  // Seçili derse göre sıralı öğrenci listesi (Yüksek nottan düşüğe, girilmemişler sona)
+  const siraliOgrenciler = useMemo(() => {
+    return [...sinifOgrencileri].sort((a, b) => {
+      const notA = aktifDeneme?.ogrenciNotlari?.[a.id]?.[secilenDers];
+      const notB = aktifDeneme?.ogrenciNotlari?.[b.id]?.[secilenDers];
 
-    const dersToplamlari: Record<keyof DenemeYazilisiNotlar, { toplam: number; sayi: number }> = {
-      turkce: { toplam: 0, sayi: 0 },
-      matematik: { toplam: 0, sayi: 0 },
-      fen: { toplam: 0, sayi: 0 },
-      sosyal: { toplam: 0, sayi: 0 },
-      ingilizce: { toplam: 0, sayi: 0 },
-      din: { toplam: 0, sayi: 0 },
-    };
+      const hasA = typeof notA === "number" && !isNaN(notA);
+      const hasB = typeof notB === "number" && !isNaN(notB);
 
-    let genelToplam = 0;
-    let genelGirisSayisi = 0;
-
-    sinifOgrencileri.forEach((ogr) => {
-      const notlar = aktifDeneme.ogrenciNotlari?.[ogr.id];
-      if (!notlar) return;
-
-      DERSLER.forEach((d) => {
-        const val = notlar[d.id];
-        if (typeof val === "number" && !isNaN(val)) {
-          dersToplamlari[d.id].toplam += val;
-          dersToplamlari[d.id].sayi += 1;
-          genelToplam += val;
-          genelGirisSayisi += 1;
-        }
-      });
+      if (!hasA && !hasB) return Number(a.numara) - Number(b.numara);
+      if (!hasA) return 1;
+      if (!hasB) return -1;
+      return (notB as number) - (notA as number);
     });
+  }, [sinifOgrencileri, aktifDeneme, secilenDers]);
 
-    const ortalamalar: Record<keyof DenemeYazilisiNotlar, number | null> = {
-      turkce: dersToplamlari.turkce.sayi > 0 ? Number((dersToplamlari.turkce.toplam / dersToplamlari.turkce.sayi).toFixed(1)) : null,
-      matematik: dersToplamlari.matematik.sayi > 0 ? Number((dersToplamlari.matematik.toplam / dersToplamlari.matematik.sayi).toFixed(1)) : null,
-      fen: dersToplamlari.fen.sayi > 0 ? Number((dersToplamlari.fen.toplam / dersToplamlari.fen.sayi).toFixed(1)) : null,
-      sosyal: dersToplamlari.sosyal.sayi > 0 ? Number((dersToplamlari.sosyal.toplam / dersToplamlari.sosyal.sayi).toFixed(1)) : null,
-      ingilizce: dersToplamlari.ingilizce.sayi > 0 ? Number((dersToplamlari.ingilizce.toplam / dersToplamlari.ingilizce.sayi).toFixed(1)) : null,
-      din: dersToplamlari.din.sayi > 0 ? Number((dersToplamlari.din.toplam / dersToplamlari.din.sayi).toFixed(1)) : null,
-    };
-
-    const genelOrt = genelGirisSayisi > 0 ? Number((genelToplam / genelGirisSayisi).toFixed(1)) : null;
-
-    return { ortalamalar, genelOrt, genelGirisSayisi };
-  }, [aktifDeneme, sinifOgrencileri]);
-
-  // Öğrenci bazlı ortalama hesaplama
-  const ogrenciOrtalamaHesapla = (notlar?: DenemeYazilisiNotlar): number | null => {
-    if (!notlar) return null;
-    const girilenler: number[] = [];
-    DERSLER.forEach((d) => {
-      const v = notlar[d.id];
-      if (typeof v === "number" && !isNaN(v)) {
-        girilenler.push(v);
-      }
-    });
-    if (girilenler.length === 0) return null;
-    const t = girilenler.reduce((acc, curr) => acc + curr, 0);
-    return Number((t / girilenler.length).toFixed(1));
-  };
-
-  // Filtrelenmiş öğrenci listesi
+  // Tabloda gösterilecek filtrelenmiş öğrenci listesi (numara sırasına göre)
   const filtrelenmisOgrenciler = useMemo(() => {
     if (!aramaMetni.trim()) return sinifOgrencileri;
     const q = aramaMetni.toLowerCase();
@@ -234,26 +208,76 @@ export default function DenemeYazilisiPage() {
     );
   }, [sinifOgrencileri, aramaMetni]);
 
-  // Yazdır / PDF İşlevi
-  const handlePrint = () => {
-    window.print();
+  // Seçili dersin istatistikleri
+  const seciliDersIstatistikleri = useMemo(() => {
+    if (!aktifDeneme) return { ortalama: null, girisSayisi: 0, enYuksek: null, enDusuk: null };
+
+    const notlar: number[] = [];
+    sinifOgrencileri.forEach((ogr) => {
+      const val = aktifDeneme.ogrenciNotlari?.[ogr.id]?.[secilenDers];
+      if (typeof val === "number" && !isNaN(val)) {
+        notlar.push(val);
+      }
+    });
+
+    if (notlar.length === 0) return { ortalama: null, girisSayisi: 0, enYuksek: null, enDusuk: null };
+
+    const toplam = notlar.reduce((a, b) => a + b, 0);
+    const ortalama = Number((toplam / notlar.length).toFixed(1));
+    const enYuksek = Math.max(...notlar);
+    const enDusuk = Math.min(...notlar);
+
+    return { ortalama, girisSayisi: notlar.length, enYuksek, enDusuk };
+  }, [aktifDeneme, sinifOgrencileri, secilenDers]);
+
+  // Ders bazlı not giriş sayısı
+  const dersGirisSayilari = useMemo(() => {
+    const sayilar: Record<DenemeDersId, number> = {
+      turkce: 0,
+      matematik: 0,
+      fen: 0,
+      sosyal: 0,
+      ingilizce: 0,
+      din: 0,
+    };
+    if (!aktifDeneme) return sayilar;
+
+    sinifOgrencileri.forEach((ogr) => {
+      const ogrNotlar = aktifDeneme.ogrenciNotlari?.[ogr.id];
+      if (!ogrNotlar) return;
+      DERSLER.forEach((d) => {
+        const val = ogrNotlar[d.id];
+        if (typeof val === "number" && !isNaN(val)) {
+          sayilar[d.id] += 1;
+        }
+      });
+    });
+    return sayilar;
+  }, [aktifDeneme, sinifOgrencileri]);
+
+  // Not durumuna göre renk etiketi
+  const notRenkEtiketi = (puan: number) => {
+    if (puan >= 85) return "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30";
+    if (puan >= 70) return "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30";
+    if (puan >= 50) return "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30";
+    return "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30";
   };
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-6xl mx-auto">
       {/* Üst Başlık & Kontroller */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[var(--border)] pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <span className="text-3xl p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 shadow-xs">
+            <span className="text-3xl p-2.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 shadow-xs">
               ✍️
             </span>
             <div>
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight gradient-text">
                 Deneme Yazılısı
               </h1>
               <p className="text-sm text-[var(--muted-foreground)] mt-0.5">
-                Türkçe, Matematik, Fen, Sosyal, İngilizce ve Din Kültürü yazılı puanlarını girin ve analiz edin.
+                Ders bazlı deneme yazılısı sonuçlarını girin, sıralamaları ve başarı analizlerini inceleyin.
               </p>
             </div>
           </div>
@@ -295,24 +319,57 @@ export default function DenemeYazilisiPage() {
             <span>➕</span>
             <span>Yeni Deneme Yazılısı</span>
           </button>
+        </div>
+      </div>
 
-          {/* Yazdır Butonu */}
-          {aktifDeneme && (
-            <button
-              onClick={handlePrint}
-              className="p-2 px-3 rounded-xl bg-[var(--card)] hover:bg-[var(--accent)] border border-[var(--border)] text-sm font-medium transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-              title="Sonuç Tablosunu Yazdır"
-            >
-              <span>🖨️</span>
-              <span className="hidden sm:inline">Yazdır</span>
-            </button>
-          )}
+      {/* DERS SEÇİM SEKMELERİ (TESTLER BÖLÜMÜNDEKİ GİBİ ÜSTTE) */}
+      <div className="bg-[var(--card)] rounded-2xl p-4 border border-[var(--border)] shadow-xs space-y-2">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <span className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider">
+            📚 Branş / Ders Seçimi (Önce dersi seçin, ardından notları girin)
+          </span>
+          <span className="text-xs font-medium text-indigo-500">
+            Aktif Ders: <strong>{seciliDersDetay.emoji} {seciliDersDetay.label}</strong>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+          {DERSLER.map((d) => {
+            const isActive = secilenDers === d.id;
+            const girisSayisi = dersGirisSayilari[d.id] || 0;
+
+            return (
+              <button
+                key={d.id}
+                onClick={() => setSecilenDers(d.id)}
+                className={`flex flex-col items-start justify-between p-3 rounded-xl font-bold transition-all border cursor-pointer ${
+                  isActive
+                    ? `${d.activeBtnClass} shadow-md scale-[1.02]`
+                    : "bg-[var(--background)] hover:bg-[var(--accent)] text-[var(--foreground)] border-[var(--border)]"
+                }`}
+              >
+                <div className="flex items-center gap-2 w-full justify-between">
+                  <span className="text-base">{d.emoji}</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      isActive
+                        ? "bg-white/20 text-white"
+                        : "bg-[var(--muted)] text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {girisSayisi}/{sinifOgrencileri.length}
+                  </span>
+                </div>
+                <span className="text-sm font-extrabold mt-1.5">{d.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Deneme Yazılısı Seçim Sekmeleri */}
       {denemeler.length > 0 ? (
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
           {denemeler.map((d) => {
             const isSelected = d.id === aktifDenemeId;
             return (
@@ -355,7 +412,7 @@ export default function DenemeYazilisiPage() {
           <div className="text-4xl mb-3">📝</div>
           <h3 className="text-lg font-bold">Henüz Deneme Yazılısı Eklenmemiş</h3>
           <p className="text-sm text-[var(--muted-foreground)] max-w-md mx-auto mt-1 mb-4">
-            {secilenSinif}/{secilenSube} sınıfı için henüz kayıtlı bir deneme yazılısı bulunmuyor. Yeni bir deneme ekleyerek 6 temel dersin notlarını kolayca girebilirsiniz.
+            {secilenSinif}/{secilenSube} sınıfı için henüz kayıtlı bir deneme yazılısı bulunmuyor. Yeni bir deneme ekleyerek branş bazında notları girebilirsiniz.
           </p>
           <button
             onClick={() => setYeniModalAcik(true)}
@@ -366,45 +423,65 @@ export default function DenemeYazilisiPage() {
         </div>
       )}
 
-      {/* Aktif Deneme Detayı & Not Giriş Tablosu */}
+      {/* Aktif Deneme Detayı & Not Giriş Alanı */}
       {aktifDeneme && (
-        <div className="space-y-6">
-          {/* İstatistik Özet Kartları */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
-            {/* Genel Ortalama */}
-            <div className="col-span-2 sm:col-span-1 p-3.5 rounded-2xl bg-gradient-to-br from-indigo-500/15 via-indigo-500/5 to-transparent border border-indigo-500/30 flex flex-col justify-between">
-              <span className="text-xs font-bold text-indigo-500 uppercase tracking-wider">
-                Genel Sınıf Ort.
+        <div className="space-y-4">
+          {/* Başlık Kartı, Önizleme Butonu & Özet İstatistikler */}
+          <div className="bg-[var(--card)] rounded-2xl p-4 sm:p-5 border border-[var(--border)] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <span className={`text-3xl p-2.5 rounded-2xl ${seciliDersDetay.bgLight} border ${seciliDersDetay.borderLight}`}>
+                {seciliDersDetay.emoji}
               </span>
-              <div className="text-2xl font-black mt-1 text-indigo-600 dark:text-indigo-400">
-                {istatistikler?.genelOrt !== null ? istatistikler?.genelOrt : "-"}
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-indigo-600 text-white">
+                    {secilenSinif}-{secilenSube}
+                  </span>
+                  <span className={`text-xs font-extrabold ${seciliDersDetay.textCol}`}>
+                    {seciliDersDetay.label} Dersi
+                  </span>
+                  <span className="text-xs text-[var(--muted-foreground)]">
+                    📅 {aktifDeneme.tarih}
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-extrabold text-[var(--foreground)] mt-0.5">
+                  {aktifDeneme.baslik}
+                </h3>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  {sinifOgrencileri.length} Öğrenci • Doğrudan 0-100 arası yazılı notu girin
+                </p>
               </div>
-              <span className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                {istatistikler?.genelGirisSayisi || 0} not girildi
-              </span>
             </div>
 
-            {/* 6 Dersin Ortalamaları */}
-            {DERSLER.map((d) => {
-              const ort = istatistikler?.ortalamalar[d.id];
-              return (
-                <div
-                  key={d.id}
-                  className={`p-3.5 rounded-2xl ${d.bgLight} border ${d.borderLight} flex flex-col justify-between`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-[var(--foreground)] truncate">
-                      {d.label}
-                    </span>
-                    <span className="text-sm">{d.emoji}</span>
-                  </div>
-                  <div className={`text-2xl font-black mt-1 ${d.textCol}`}>
-                    {ort !== null ? ort : "-"}
-                  </div>
-                  <span className="text-[10px] text-[var(--muted-foreground)]">Ortalama Puan</span>
+            {/* İstatistikler & Önizleme Butonu */}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Mini İstatistik Kutuları */}
+              <div className="flex items-center gap-2 bg-[var(--background)] px-3 py-2 rounded-xl border border-[var(--border)] text-xs">
+                <div>
+                  <span className="text-[var(--muted-foreground)] block text-[10px]">Ders Ortalaması</span>
+                  <span className="font-extrabold text-sm text-indigo-500">
+                    {seciliDersIstatistikleri.ortalama !== null ? `${seciliDersIstatistikleri.ortalama} Puan` : "-"}
+                  </span>
                 </div>
-              );
-            })}
+                <div className="h-6 w-px bg-[var(--border)] mx-1"></div>
+                <div>
+                  <span className="text-[var(--muted-foreground)] block text-[10px]">Giriş Yapılan</span>
+                  <span className="font-bold text-sm">
+                    {seciliDersIstatistikleri.girisSayisi}/{sinifOgrencileri.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* TESTLER BÖLÜMÜNDEKİ GİBİ: SONUÇLARI ÖNİZLE BUTONU */}
+              <button
+                onClick={() => setOnizlemeModalAcik(true)}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                title="Sonuçları önizleme tablosu ve sıralama olarak görüntüle"
+              >
+                <span>👁️</span>
+                <span>Sonuçları Önizle</span>
+              </button>
+            </div>
           </div>
 
           {/* Tablo Araç Çubuğu (Arama & Durum) */}
@@ -433,36 +510,34 @@ export default function DenemeYazilisiPage() {
                 </span>
               )}
               {kayitDurumu === "idle" && (
-                <span className="text-[var(--muted-foreground)]">
-                  Notları 0-100 arasında doğrudan yazabilirsiniz (otomatik kaydedilir).
+                <span className="text-[var(--muted-foreground)] hidden sm:inline">
+                  Öğrencinin <strong>{seciliDersDetay.label}</strong> notunu yazıp Enter veya Tab ile geçebilirsiniz.
                 </span>
               )}
             </div>
           </div>
 
-          {/* Not Giriş Tablosu */}
+          {/* Not Giriş Tablosu (Sadece Seçili Dersin Notları) */}
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-[var(--muted)]/50 border-b border-[var(--border)]">
-                    <th className="py-3 px-4 font-bold w-14 text-center">No</th>
-                    <th className="py-3 px-4 font-bold min-w-[180px]">Öğrenci</th>
-                    {DERSLER.map((d) => (
-                      <th key={d.id} className="py-3 px-3 font-bold text-center min-w-[100px]">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <span>{d.emoji}</span>
-                          <span>{d.label}</span>
-                        </div>
-                      </th>
-                    ))}
-                    <th className="py-3 px-4 font-bold text-center w-28 bg-indigo-500/5">Ortalama</th>
+                    <th className="py-3 px-4 font-bold w-16 text-center">No</th>
+                    <th className="py-3 px-4 font-bold">Öğrenci Adı Soyadı</th>
+                    <th className="py-3 px-4 font-bold text-center w-40">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <span>{seciliDersDetay.emoji}</span>
+                        <span>{seciliDersDetay.label} Notu</span>
+                      </div>
+                    </th>
+                    <th className="py-3 px-4 font-bold text-center w-32">Durum</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border)]">
                   {filtrelenmisOgrenciler.length === 0 ? (
                     <tr>
-                      <td colSpan={2 + DERSLER.length + 1} className="py-8 text-center text-[var(--muted-foreground)]">
+                      <td colSpan={4} className="py-8 text-center text-[var(--muted-foreground)]">
                         {sinifOgrencileri.length === 0
                           ? `${secilenSinif}/${secilenSube} sınıfında kayıtlı öğrenci bulunamadı. "Sınıf Listesi" menüsünden öğrenci ekleyebilirsiniz.`
                           : "Aramanıza uygun öğrenci bulunamadı."}
@@ -470,8 +545,8 @@ export default function DenemeYazilisiPage() {
                     </tr>
                   ) : (
                     filtrelenmisOgrenciler.map((ogr) => {
-                      const ogrNotlar = aktifDeneme.ogrenciNotlari?.[ogr.id];
-                      const ort = ogrenciOrtalamaHesapla(ogrNotlar);
+                      const notVal = aktifDeneme.ogrenciNotlari?.[ogr.id]?.[secilenDers] ?? "";
+                      const hasPuan = typeof notVal === "number" && !isNaN(notVal);
 
                       return (
                         <tr key={ogr.id} className="hover:bg-[var(--accent)]/30 transition-colors">
@@ -479,7 +554,7 @@ export default function DenemeYazilisiPage() {
                             {ogr.numara}
                           </td>
                           <td className="py-2.5 px-4 font-semibold">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5">
                               <span className="w-7 h-7 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold text-xs flex items-center justify-center shrink-0">
                                 {ogr.ad.charAt(0)}
                               </span>
@@ -488,39 +563,36 @@ export default function DenemeYazilisiPage() {
                               </span>
                             </div>
                           </td>
-                          {DERSLER.map((d) => {
-                            const val = ogrNotlar?.[d.id] ?? "";
-                            return (
-                              <td key={d.id} className="py-2 px-2 text-center">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  placeholder="-"
-                                  value={val}
-                                  onChange={(e) => handleNotDegisikligi(ogr.id, d.id, e.target.value)}
-                                  className="w-16 mx-auto text-center font-bold text-sm py-1.5 px-2 rounded-xl border border-[var(--border)] bg-[var(--background)] focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-[var(--muted-foreground)]/40"
-                                />
-                              </td>
-                            );
-                          })}
-                          <td className="py-2.5 px-4 text-center bg-indigo-500/5">
-                            {ort !== null ? (
+                          <td className="py-2 px-4 text-center">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              placeholder="-"
+                              value={notVal}
+                              onChange={(e) => handleNotDegisikligi(ogr.id, e.target.value)}
+                              className="w-24 mx-auto text-center font-black text-base py-1.5 px-3 rounded-xl border border-[var(--border)] bg-[var(--background)] focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder:text-[var(--muted-foreground)]/40"
+                            />
+                          </td>
+                          <td className="py-2.5 px-4 text-center">
+                            {hasPuan ? (
                               <span
-                                className={`inline-flex items-center justify-center px-2.5 py-1 rounded-xl text-xs font-bold ${
-                                  ort >= 85
-                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                                    : ort >= 70
-                                    ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30"
-                                    : ort >= 50
-                                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30"
-                                    : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30"
-                                }`}
+                                className={`inline-flex items-center justify-center px-3 py-1 rounded-xl text-xs font-extrabold border ${notRenkEtiketi(
+                                  notVal as number
+                                )}`}
                               >
-                                {ort}
+                                {notVal >= 85
+                                  ? "Pekiyi"
+                                  : notVal >= 70
+                                  ? "İyi"
+                                  : notVal >= 50
+                                  ? "Orta"
+                                  : "Geliştirilmeli"}
                               </span>
                             ) : (
-                              <span className="text-xs text-[var(--muted-foreground)]">-</span>
+                              <span className="text-xs text-[var(--muted-foreground)] italic">
+                                Girilmedi
+                              </span>
                             )}
                           </td>
                         </tr>
@@ -530,6 +602,130 @@ export default function DenemeYazilisiPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* TESTLER BÖLÜMÜNDEKİ GİBİ: SONUÇLARI ÖNİZLEME MODALI          */}
+      {/* ============================================================ */}
+      {onizlemeModalAcik && aktifDeneme && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+          <div className="bg-[var(--card)] rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
+            
+            {/* Sade ve Şık Başlık */}
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] bg-gradient-to-b from-indigo-500/5 to-transparent flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-xs font-black px-2 py-0.5 rounded-md bg-indigo-600 text-white">
+                    {secilenSinif}-{secilenSube} Sınıfı
+                  </span>
+                  <span className={`text-xs font-bold ${seciliDersDetay.textCol}`}>
+                    {seciliDersDetay.emoji} {seciliDersDetay.label} Dersi
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-[var(--foreground)] truncate">
+                  {aktifDeneme.baslik} Sonuçları
+                </h3>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => window.print()}
+                  className="p-2 rounded-xl bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] hover:border-indigo-500 text-xs font-bold transition-all cursor-pointer"
+                  title="Yazdır"
+                >
+                  🖨️
+                </button>
+                <button
+                  onClick={() => setOnizlemeModalAcik(false)}
+                  className="w-8 h-8 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-red-500 transition-all font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Sade Sonuç Listesi - Sıralı Gösterim */}
+            <div className="flex-1 overflow-y-auto divide-y divide-[var(--border)]">
+              {siraliOgrenciler.map((ogr, idx) => {
+                const notVal = aktifDeneme.ogrenciNotlari?.[ogr.id]?.[secilenDers];
+                const hasPuan = typeof notVal === "number" && !isNaN(notVal);
+
+                return (
+                  <div
+                    key={ogr.id}
+                    className={`flex items-center justify-between p-3 sm:px-4 hover:bg-[var(--background)]/60 transition-colors ${
+                      idx === 0 && hasPuan ? "bg-amber-500/5" : ""
+                    }`}
+                  >
+                    {/* Sol: Sıra + İsim Soyisim */}
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <span
+                        className={`w-6 h-6 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
+                          idx === 0 && hasPuan
+                            ? "bg-amber-400 text-white"
+                            : idx === 1 && hasPuan
+                            ? "bg-slate-400 text-white"
+                            : idx === 2 && hasPuan
+                            ? "bg-orange-600 text-white"
+                            : "bg-[var(--background)] text-[var(--muted-foreground)] border border-[var(--border)]"
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-[var(--foreground)] truncate">
+                          {ogr.ad} {ogr.soyad}
+                        </p>
+                        <p className="text-[11px] text-[var(--muted-foreground)]">
+                          {secilenSinif}-{secilenSube} • No: {ogr.numara}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Sağ: Puan */}
+                    <div className="flex items-center gap-3 shrink-0 text-right">
+                      {hasPuan ? (
+                        <div className="min-w-[64px]">
+                          <span
+                            className={`px-3 py-1 rounded-lg font-black text-sm border inline-block ${notRenkEtiketi(
+                              notVal as number
+                            )}`}
+                          >
+                            {notVal} Puan
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[var(--muted-foreground)] italic pr-2">
+                          Girilmedi
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {sinifOgrencileri.length === 0 && (
+                <div className="p-8 text-center text-sm text-[var(--muted-foreground)]">
+                  Kayıtlı öğrenci bulunamadı.
+                </div>
+              )}
+            </div>
+
+            {/* Alt Kısım */}
+            <div className="p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--background)]/60 flex items-center justify-between">
+              <span className="text-[11px] text-[var(--muted-foreground)]">
+                Toplam <strong>{sinifOgrencileri.length}</strong> öğrenci • Puana göre sıralı
+              </span>
+              <button
+                onClick={() => setOnizlemeModalAcik(false)}
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all cursor-pointer"
+              >
+                Kapat
+              </button>
+            </div>
+
           </div>
         </div>
       )}
@@ -583,7 +779,7 @@ export default function DenemeYazilisiPage() {
                   <strong>Sınıf:</strong> {secilenSinif}. Sınıf / {secilenSube} Şubesi
                 </p>
                 <p>
-                  <strong>İçerik:</strong> Türkçe, Matematik, Fen Bilgisi, Sosyal Bilgiler, İngilizce, Din Kültürü (0-100 Puan)
+                  <strong>Dersler:</strong> Türkçe, Matematik, Fen Bilgisi, Sosyal Bilgiler, İngilizce, Din Kültürü (Ayrı ayrı seçilerek girilebilir)
                 </p>
               </div>
 
@@ -609,4 +805,3 @@ export default function DenemeYazilisiPage() {
     </div>
   );
 }
-
