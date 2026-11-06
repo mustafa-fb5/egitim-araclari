@@ -8,6 +8,7 @@ import ProGuard from "@/components/auth/pro-guard";
 const freeRoutes = ["/", "/sinif-listesi", "/yoklama", "/personel-listesi", "/admin"];
 
 const pageNameMap: Record<string, string> = {
+  "/deneme-yazilisi": "Deneme Yazılısı",
   "/ortalama-hesaplama": "Ortalama Hesaplama",
   "/testler": "Testler & Net Takibi",
   "/sinav-analiz": "Sınav Analiz",

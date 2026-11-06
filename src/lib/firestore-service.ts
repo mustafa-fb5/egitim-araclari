@@ -974,3 +974,87 @@ export async function saveOturmaPlani(data: OturmaPlaniVerisi): Promise<void> {
     guncellenmeTarihi: new Date().toISOString(),
   });
 }
+
+// ==============================
+// 12. DENEME YAZILISI (Kullanıcıya Özel)
+// ==============================
+
+const DENEME_YAZILISI_COL = "deneme_yazilisi";
+
+export interface DenemeYazilisiNotlar {
+  turkce: number | "";
+  matematik: number | "";
+  fen: number | "";
+  sosyal: number | "";
+  ingilizce: number | "";
+  din: number | "";
+}
+
+export interface DenemeYazilisiDoc {
+  id: string; // uuid veya timestamp
+  baslik: string;
+  sinif: string;
+  sube: string;
+  tarih: string;
+  ogrenciNotlari: Record<string | number, DenemeYazilisiNotlar>;
+  updatedAt?: string;
+}
+
+export function subscribeDenemeYazililari(sinif: string, sube: string, callback: (list: DenemeYazilisiDoc[]) => void) {
+  const cacheKey = userCacheKey(`egitim_deneme_yazilisi_${sinif}_${sube}`);
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) callback(JSON.parse(cached));
+    } catch {
+      // ignore
+    }
+  }
+
+  return onSnapshot(userCol(DENEME_YAZILISI_COL), (snap) => {
+    const list: DenemeYazilisiDoc[] = [];
+    snap.forEach((d) => {
+      const data = d.data() as DenemeYazilisiDoc;
+      if (data.sinif === sinif && data.sube === sube) {
+        list.push({ ...data, id: d.id });
+      }
+    });
+    list.sort((a, b) => (b.tarih || "").localeCompare(a.tarih || ""));
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(list));
+      } catch {
+        // ignore
+      }
+    }
+
+    callback(list);
+  }, (err) => {
+    console.warn("Firestore deneme yazilisi subscription error:", err);
+  });
+}
+
+export async function saveDenemeYazilisi(docData: DenemeYazilisiDoc): Promise<void> {
+  const cleanNotlar: Record<string, Record<string, number | "">> = {};
+  Object.entries(docData.ogrenciNotlari || {}).forEach(([id, notlar]) => {
+    cleanNotlar[String(id)] = {
+      turkce: notlar.turkce === "" ? "" : Number(notlar.turkce),
+      matematik: notlar.matematik === "" ? "" : Number(notlar.matematik),
+      fen: notlar.fen === "" ? "" : Number(notlar.fen),
+      sosyal: notlar.sosyal === "" ? "" : Number(notlar.sosyal),
+      ingilizce: notlar.ingilizce === "" ? "" : Number(notlar.ingilizce),
+      din: notlar.din === "" ? "" : Number(notlar.din),
+    };
+  });
+
+  await setDoc(userDoc(DENEME_YAZILISI_COL, docData.id), {
+    ...docData,
+    ogrenciNotlari: cleanNotlar,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteDenemeYazilisi(docId: string): Promise<void> {
+  await deleteDoc(userDoc(DENEME_YAZILISI_COL, docId));
+}

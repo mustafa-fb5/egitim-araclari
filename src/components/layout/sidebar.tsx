@@ -12,6 +12,7 @@ export const defaultMenuItems = [
   { href: "/", label: "Ana Sayfa", icon: "🏠" },
   { href: "/sinif-listesi", label: "Sınıf Listesi", icon: "📋" },
   { href: "/yoklama", label: "Yoklama", icon: "✅" },
+  { href: "/deneme-yazilisi", label: "Deneme Yazılısı", icon: "✍️" },
   { href: "/ortalama-hesaplama", label: "Ortalama Hesaplama", icon: "📊" },
   { href: "/testler", label: "Testler", icon: "📝" },
   { href: "/sinav-analiz", label: "Sınav Analiz", icon: "📈" },
