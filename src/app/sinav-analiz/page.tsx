@@ -41,6 +41,9 @@ export default function SinavAnalizPage() {
   // Öğrenci Sınav Geçmişi Modalı State'i
   const [gecmisOgrenci, setGecmisOgrenci] = useState<Ogrenci | null>(null);
 
+  // Sınav Sonuçları Önizleme Modalı State'i
+  const [onizlemeModalAcik, setOnizlemeModalAcik] = useState(false);
+
   // Firestore Realtime Subscription (Öğrenciler & Sınavlar)
   useEffect(() => {
     const unsubOgrenciler = subscribeOgrenciler((data) => setOgrenciler(data));
@@ -272,6 +275,60 @@ export default function SinavAnalizPage() {
     return sonuclar.sort((a, b) => new Date(a.tarih).getTime() - new Date(b.tarih).getTime());
   }, [gecmisOgrenci, sinavlar]);
 
+  // Sınav sonuçlarına göre puana/nete göre sıralanmış öğrenci listesi (Önizleme için)
+  const siraliSinavSonuclari = useMemo(() => {
+    if (!aktifSinav) return [];
+
+    return [...sinifOgrencileri]
+      .map((ogr) => {
+        const notlar = aktifSinav.ogrenciNotlari[ogr.id];
+        const topNet = toplamNetBul(notlar);
+        const puan = lgsPuanHesapla(notlar);
+
+        let toplamDogru = 0;
+        let toplamYanlis = 0;
+        let toplamBos = 0;
+        let veriGirildi = false;
+
+        const dersDetaylari: Record<string, { dogru: number; yanlis: number; bos: number; net: number }> = {};
+
+        dersListesi.forEach((d) => {
+          const dn = notlar?.[d.id];
+          if (dn && (dn.dogru !== "" || dn.yanlis !== "")) {
+            veriGirildi = true;
+          }
+          const dogru = typeof dn?.dogru === "number" ? dn.dogru : 0;
+          const yanlis = typeof dn?.yanlis === "number" ? dn.yanlis : 0;
+          const bos = typeof dn?.bos === "number" ? dn.bos : d.soruSayisi;
+          const net = netHesapla(dn);
+
+          toplamDogru += dogru;
+          toplamYanlis += yanlis;
+          toplamBos += bos;
+
+          dersDetaylari[d.id] = { dogru, yanlis, bos, net };
+        });
+
+        return {
+          ogrenci: ogr,
+          toplamNet: topNet,
+          puan,
+          toplamDogru,
+          toplamYanlis,
+          toplamBos,
+          dersDetaylari,
+          veriGirildi,
+        };
+      })
+      .sort((a, b) => {
+        if (!a.veriGirildi && !b.veriGirildi) return Number(a.ogrenci.numara) - Number(b.ogrenci.numara);
+        if (!a.veriGirildi) return 1;
+        if (!b.veriGirildi) return -1;
+        if (b.puan !== a.puan) return b.puan - a.puan;
+        return b.toplamNet - a.toplamNet;
+      });
+  }, [aktifSinav, sinifOgrencileri, secilenSinif]);
+
   // Geçmiş sınav istatistikleri (Ortalama, En Yüksek, vb.)
   const gecmisIstatistik = useMemo(() => {
     if (ogrenciGecmisSinavlari.length === 0) {
@@ -477,8 +534,16 @@ export default function SinavAnalizPage() {
                 </p>
               </div>
 
-              {/* Sınav Adını Değiştir ve Sil Butonları */}
+              {/* Sınav Adını Değiştir, Sil ve Önizleme Butonları */}
               <div className="flex items-center gap-2 ml-2">
+                <button
+                  onClick={() => setOnizlemeModalAcik(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-500/20 hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  title="Tüm derslerin doğru, yanlış, net ve puanlarını önizleme tablosunda gör"
+                >
+                  <span>👁️</span>
+                  <span>Sonuçları Önizle</span>
+                </button>
                 <button
                   onClick={(e) => sinavDuzenleAc(e, aktifSinav)}
                   className="px-3 py-1.5 bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--primary)] hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-[var(--border)]"
@@ -941,6 +1006,224 @@ export default function SinavAnalizPage() {
                 💾 Notları Kaydet
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================ */}
+      {/* 5. ADIM: SINAV SONUÇLARI ÖNİZLEME MODALI                    */}
+      {/* Her dersten Doğru/Yanlış, Toplam D/Y, Toplam Net ve Puan     */}
+      {/* ============================================================ */}
+      {onizlemeModalAcik && aktifSinav && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 animate-fade-in">
+          <div className="bg-[var(--card)] rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl border border-[var(--border)] overflow-hidden">
+            
+            {/* Modal Başlığı */}
+            <div className="p-4 sm:p-5 border-b border-[var(--border)] bg-gradient-to-b from-indigo-500/10 to-transparent flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-indigo-600 text-white">
+                    {secilenSinif}-{secilenSube} Sınıfı
+                  </span>
+                  <span className="text-xs font-bold text-[var(--muted-foreground)]">
+                    📅 {aktifSinav.tarih}
+                  </span>
+                  {secilenSinif === "8" && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-600 border border-purple-500/30">
+                      🏆 LGS 500 Puan
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-[var(--foreground)] truncate">
+                  🎓 {aktifSinav.ad} • Sınav Sonuçları Önizleme
+                </h3>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Her dersin Doğru (D) ve Yanlış (Y) sayıları, toplam D/Y, toplam net ve başarı puanı sıralaması
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-2 rounded-xl bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] hover:border-indigo-500 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Yazdır / PDF Olarak Kaydet"
+                >
+                  <span>🖨️</span>
+                  <span className="hidden sm:inline">Yazdır</span>
+                </button>
+                <button
+                  onClick={() => setOnizlemeModalAcik(false)}
+                  className="w-9 h-9 rounded-xl bg-[var(--background)] border border-[var(--border)] flex items-center justify-center text-[var(--muted-foreground)] hover:text-red-500 transition-all font-bold text-sm cursor-pointer"
+                  title="Kapat"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Önizleme Tablosu */}
+            <div className="flex-1 overflow-auto">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                <thead className="sticky top-0 bg-[var(--muted)]/90 backdrop-blur-xs z-10 border-b border-[var(--border)] shadow-xs">
+                  <tr>
+                    <th className="py-2.5 px-3 font-bold text-center w-12">Sıra</th>
+                    <th className="py-2.5 px-3 font-bold min-w-[150px]">Öğrenci</th>
+                    {dersListesi.map((d) => (
+                      <th key={d.id} className="py-2.5 px-2 font-bold text-center min-w-[70px]">
+                        <div className="text-[11px] font-bold">{d.ad}</div>
+                        <div className="text-[10px] text-[var(--muted-foreground)] font-normal">D / Y</div>
+                      </th>
+                    ))}
+                    <th className="py-2.5 px-2.5 font-bold text-center bg-indigo-500/10 text-indigo-600 min-w-[75px]">
+                      <div>Toplam</div>
+                      <div className="text-[10px] font-normal">D / Y</div>
+                    </th>
+                    <th className="py-2.5 px-3 font-bold text-center bg-blue-500/10 text-blue-600 min-w-[70px]">
+                      Top. Net
+                    </th>
+                    <th className="py-2.5 px-3 font-bold text-center bg-purple-500/10 text-purple-600 min-w-[80px]">
+                      {secilenSinif === "8" ? "LGS Puanı" : "Puan"}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {siraliSinavSonuclari.map((item, idx) => {
+                    const ogr = item.ogrenci;
+                    const hasData = item.veriGirildi;
+
+                    return (
+                      <tr
+                        key={ogr.id}
+                        className={`hover:bg-[var(--accent)]/30 transition-colors ${
+                          idx === 0 && hasData
+                            ? "bg-amber-500/5 font-semibold"
+                            : idx === 1 && hasData
+                            ? "bg-slate-400/5"
+                            : idx === 2 && hasData
+                            ? "bg-orange-600/5"
+                            : ""
+                        }`}
+                      >
+                        {/* Sıra Numarası / Madalya */}
+                        <td className="py-2.5 px-3 text-center">
+                          <span
+                            className={`w-6 h-6 mx-auto rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
+                              idx === 0 && hasData
+                                ? "bg-amber-400 text-white shadow-xs"
+                                : idx === 1 && hasData
+                                ? "bg-slate-400 text-white shadow-xs"
+                                : idx === 2 && hasData
+                                ? "bg-orange-600 text-white shadow-xs"
+                                : "bg-[var(--background)] text-[var(--muted-foreground)] border border-[var(--border)]"
+                            }`}
+                          >
+                            {idx + 1}
+                          </span>
+                        </td>
+
+                        {/* Öğrenci Bilgisi */}
+                        <td className="py-2.5 px-3 font-semibold">
+                          <div className="truncate max-w-[170px] sm:max-w-none">
+                            <span className="text-[var(--foreground)] font-bold">
+                              {ogr.ad} {ogr.soyad}
+                            </span>
+                            <span className="text-[11px] text-[var(--muted-foreground)] block font-mono">
+                              No: {ogr.numara}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Her Dersin Doğru / Yanlışı */}
+                        {dersListesi.map((d) => {
+                          const dersSonuc = item.dersDetaylari[d.id];
+                          const dVal = dersSonuc?.dogru ?? 0;
+                          const yVal = dersSonuc?.yanlis ?? 0;
+                          const netVal = dersSonuc?.net ?? 0;
+
+                          if (!hasData) {
+                            return (
+                              <td key={d.id} className="py-2 px-2 text-center text-xs text-[var(--muted-foreground)]">
+                                -
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td key={d.id} className="py-2 px-2 text-center">
+                              <div className="font-semibold text-xs leading-tight">
+                                <span className="text-emerald-600 font-bold">{dVal}D</span>
+                                <span className="text-[var(--muted-foreground)] mx-0.5">/</span>
+                                <span className="text-red-500 font-bold">{yVal}Y</span>
+                              </div>
+                              <div className="text-[10px] text-[var(--muted-foreground)] font-medium">
+                                ({netVal} N)
+                              </div>
+                            </td>
+                          );
+                        })}
+
+                        {/* Toplam Doğru / Yanlış */}
+                        <td className="py-2.5 px-2.5 text-center bg-indigo-500/5">
+                          {hasData ? (
+                            <div className="font-bold text-xs sm:text-sm leading-tight">
+                              <span className="text-emerald-600">{item.toplamDogru}D</span>
+                              <span className="text-[var(--muted-foreground)] mx-0.5">/</span>
+                              <span className="text-red-500">{item.toplamYanlis}Y</span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-[var(--muted-foreground)] italic">-</span>
+                          )}
+                        </td>
+
+                        {/* Toplam Net */}
+                        <td className="py-2.5 px-3 text-center bg-blue-500/5">
+                          {hasData ? (
+                            <span className="px-2 py-0.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 font-black text-xs sm:text-sm border border-blue-500/25 inline-block">
+                              {item.toplamNet}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[var(--muted-foreground)] italic">-</span>
+                          )}
+                        </td>
+
+                        {/* Başarı Puanı (LGS / 100) */}
+                        <td className="py-2.5 px-3 text-center bg-purple-500/5">
+                          {hasData ? (
+                            <span className="px-2.5 py-1 rounded-xl bg-purple-500/15 text-purple-700 dark:text-purple-300 font-black text-xs sm:text-sm border border-purple-500/30 inline-block shadow-xs">
+                              {item.puan}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[var(--muted-foreground)] italic">Girilmedi</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {siraliSinavSonuclari.length === 0 && (
+                    <tr>
+                      <td colSpan={3 + dersListesi.length + 3} className="py-8 text-center text-sm text-[var(--muted-foreground)]">
+                        Bu sınıfta kayıtlı öğrenci bulunamadı.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Alt Çubuğu */}
+            <div className="p-3 sm:p-4 border-t border-[var(--border)] bg-[var(--background)]/80 flex items-center justify-between flex-wrap gap-2">
+              <div className="text-xs text-[var(--muted-foreground)]">
+                Toplam <strong>{siraliSinavSonuclari.length}</strong> öğrenci • Puana ve Nete göre sıralı
+              </div>
+              <button
+                onClick={() => setOnizlemeModalAcik(false)}
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-all cursor-pointer shadow-sm"
+              >
+                Kapat
+              </button>
+            </div>
+
           </div>
         </div>
       )}
